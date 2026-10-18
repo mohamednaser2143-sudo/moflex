@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Episode 2: The Great Wall | A Fix In Time</title>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #050811; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #fff; user-select: none; }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; }
+        #fade-overlay { position: fixed; inset: 0; background: #000; opacity: 1; transition: opacity 0.6s ease; pointer-events: none; z-index: 5; }
+        #flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 6; mix-blend-mode: screen; }
+        #gem-hud { position: fixed; top: 14px; right: 16px; z-index: 12; width: 54px; height: 54px; border-radius: 50%; background: radial-gradient(circle, #4fc3ff 0 38%, #b8902f 40% 52%, rgba(20,16,10,.75) 54%); box-shadow: 0 0 14px rgba(79,195,255,.5); pointer-events: none; }
+        #gem-hud i { position: absolute; width: 9px; height: 9px; margin: -4.5px; border-radius: 2px; transform: rotate(45deg); border: 1px solid rgba(255,255,255,.5); transition: background .6s, box-shadow .6s; }
+        #gem-hud.pop { animation: gempop 1.2s ease; }
+        @keyframes gempop { 0% { transform: scale(1); } 30% { transform: scale(1.6); } 100% { transform: scale(1); } }
+        #story-ui { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; box-sizing: border-box; padding: 10px 22px 13px; background: linear-gradient(to bottom, rgba(5,8,17,0.02) 0%, rgba(5,8,17,0.34) 18%, rgba(5,8,17,0.78) 58%, rgba(5,8,17,0.93) 100%); backdrop-filter: blur(4px); border-top: 1px solid rgba(255,255,255,0.10); box-shadow: 0 -8px 25px rgba(0,0,0,0.22); display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "progress progress" "info controls"; align-items: end; column-gap: 18px; row-gap: 5px; z-index: 10; pointer-events: none; }
+        .scene-info { grid-area: info; min-width: 0; padding: 0 0 2px; text-shadow: 0 2px 8px rgba(0,0,0,0.9); }
+        #progress-bar-container { grid-area: progress; width: 100%; height: 6px; background: rgba(255,255,255,0.15); border-radius: 3px; overflow: hidden; }
+        #progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #4fc3ff, #e8b54a); transition: width 0.1s linear; }
+        #scene-title { margin: 0; font-size: 21px; color: #e8b54a; letter-spacing: 1px; text-shadow: 0 0 12px rgba(232,181,74,0.5); }
+        #scene-description { margin: 2px 0 0; font-size: 14px; line-height: 1.42; color: rgba(245,245,245,0.92); max-width: 1100px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+        .controls-row { grid-area: controls; display: flex; justify-content: flex-end; align-items: center; gap: 12px; pointer-events: auto; }
+        .btn-group { display: flex; gap: 8px; }
+        button { padding: 9px 16px; font-size: 14px; font-weight: bold; color: white; background: rgba(255,255,255,0.1); border: 2px solid #4fc3ff; border-radius: 6px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
+        button:hover { background: #4fc3ff; color: #000; box-shadow: 0 0 12px #4fc3ff; }
+        #scene-counter { font-family: monospace; font-size: 13px; color: #aaa; }
+        @media (max-width: 700px) {
+            #story-ui { grid-template-columns: 1fr; grid-template-areas: "progress" "info" "controls"; row-gap: 4px; }
+            .controls-row { justify-content: space-between; }
+            .btn-group { flex-wrap: wrap; }
+            button { padding: 7px 10px; font-size: 12px; }
+            #scene-description { -webkit-line-clamp: 2; }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="fade-overlay"></div>
+    <div id="flash"></div>
+    <div id="gem-hud"></div>
+    <div id="story-ui">
+        <div id="progress-bar-container"><div id="progress-bar"></div></div>
+        <div class="scene-info">
+            <h2 id="scene-title">Winding the watch...</h2>
+            <p id="scene-description">Getting ready...</p>
+        </div>
+        <div class="controls-row">
+            <span id="scene-counter">SCENE 1</span>
+            <div class="btn-group">
+                <button onclick="prevScene()">◄ Prev</button>
+                <button id="autoplay-btn" onclick="toggleAutoPlay()">Autoplay: ON</button>
+                <button id="narrator-btn" onclick="toggleNarrator()">Narrator: ON</button>
+                <button onclick="nextScene()">Next ►</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Seven little gem slots around the corner watch.
+        (function () { const h = document.getElementById('gem-hud'); for (let i = 0; i < 7; i++) { const a = -Math.PI / 2 + (i + 0.5) * Math.PI * 2 / 7; const d = document.createElement('i'); d.style.left = (27 + Math.cos(a) * 21) + 'px'; d.style.top = (27 + Math.sin(a) * 21) + 'px'; h.appendChild(d); } })();
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>window.SHOW_INFO = {"series": "A Fix In Time", "num": 2, "title": "The Great Wall", "startGems": 1};</script>
+    <script>
+// A Fix In Time — shared scene engine. build.py copies this into every episode and trailer,
+// so each HTML file stays self-contained like the Series 1 files.
+
+// ===================== Timing =====================
+const SCENE_DURATION_MS = 20000;
+function getSceneDurationMs(index) {
+    const data = storyData[index];
+    if (!data) return SCENE_DURATION_MS;
+    const words = `${data.title} ${data.desc}`.trim().split(/\s+/).length;
+    const byWords = 2500 + words * 430;
+    return Math.max(SCENE_DURATION_MS, Math.min(45000, byWords));
+}
+
+// ===================== Renderer, camera, lights =====================
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1830);
+scene.fog = new THREE.FogExp2(0x1a1830, 0.006);
+
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1200);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+container.appendChild(renderer.domElement);
+
+const sun = new THREE.DirectionalLight(0xffffff, 1.4);
+sun.position.set(40, 80, 40);
+sun.castShadow = true;
+sun.shadow.mapSize.width = 2048;
+sun.shadow.mapSize.height = 2048;
+sun.shadow.camera.left = -60; sun.shadow.camera.right = 60;
+sun.shadow.camera.top = 60; sun.shadow.camera.bottom = -60;
+sun.shadow.camera.far = 300;
+scene.add(sun);
+
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+scene.add(ambientLight);
+const hemiLight = new THREE.HemisphereLight(0xcfe3ff, 0x4a3a2a, 0.35);
+scene.add(hemiLight);
+
+const worldGround = new THREE.Mesh(
+    new THREE.BoxGeometry(600, 2, 600),
+    new THREE.MeshStandardMaterial({ color: 0x5ca988, roughness: 0.95 })
+);
+worldGround.position.y = -1;
+worldGround.receiveShadow = true;
+scene.add(worldGround);
+
+const KEEP = new Set([worldGround, sun, ambientLight, hemiLight]);
+
+// ===================== Small helpers =====================
+let ambientFx = [];
+function addFx(fn) { ambientFx.push(fn); }
+function makeRand(seed) { let s = seed * 9301 + 49297; return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
+function lerp(a, b, k) { return a + (b - a) * k; }
+function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+// 0 before time a, 1 after time b, smooth in between.
+function ease(t, a, b) { const k = clamp01((t - a) / (b - a)); return k * k * (3 - 2 * k); }
+function lerpAngle(a, b, k) {
+    let d = b - a;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    return a + d * k;
+}
+
+const _mats = {};
+function mat(color, o = {}) {
+    const k = color + '|' + JSON.stringify(o);
+    return _mats[k] || (_mats[k] = new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.8 }, o)));
+}
+const _glowMats = {};
+function glowMat(color, opacity = 1) {
+    const k = color + '|' + opacity;
+    return _glowMats[k] || (_glowMats[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity }));
+}
+function asMat(c, o) { return (typeof c === 'object') ? c : mat(c, o); }
+function box(w, h, d, color, x = 0, y = 0, z = 0, o) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), asMat(color, o));
+    m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; return m;
+}
+function cyl(rt, rb, h, color, x = 0, y = 0, z = 0, seg = 12, o) {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), asMat(color, o));
+    m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; return m;
+}
+function sph(r, color, x = 0, y = 0, z = 0, seg = 12, o) {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(6, seg * 0.7 | 0)), asMat(color, o));
+    m.position.set(x, y, z); m.castShadow = true; return m;
+}
+function cone(r, h, color, x = 0, y = 0, z = 0, seg = 8, o) {
+    const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, seg), asMat(color, o));
+    m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; return m;
+}
+function group(...kids) { const g = new THREE.Group(); kids.forEach(k => k && g.add(k)); return g; }
+function at(obj, x = 0, y = 0, z = 0, ry = 0, s = 1) { obj.position.set(x, y, z); obj.rotation.y = ry; if (s !== 1) obj.scale.setScalar(s); return obj; }
+function add(...objs) { objs.forEach(o => o && scene.add(o)); return objs[0]; }
+
+// Soft round glow used for lamps, gems, portals and stars.
+let _glowTex = null;
+function glowTexture() {
+    if (_glowTex) return _glowTex;
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d'); const r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.25, 'rgba(255,255,255,0.6)'); r.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = r; g.fillRect(0, 0, 128, 128);
+    _glowTex = new THREE.CanvasTexture(c); return _glowTex;
+}
+function createGlow(color, size = 2, opacity = 0.9) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending }));
+    s.scale.set(size, size, 1); return s;
+}
+
+function textTexture(text, { w = 512, h = 128, bg = '#e5a93b', fg = '#222', border = '#3d2314', font = '900 48px sans-serif' } = {}) {
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    if (bg) { g.fillStyle = bg; g.fillRect(0, 0, w, h); }
+    if (border) { g.strokeStyle = border; g.lineWidth = 12; g.strokeRect(6, 6, w - 12, h - 12); }
+    g.fillStyle = fg; g.font = font; g.textAlign = 'center'; g.textBaseline = 'middle';
+    String(text).split('\n').forEach((line, i, arr) => g.fillText(line, w / 2, h / 2 + (i - (arr.length - 1) / 2) * (h / (arr.length + 0.6))));
+    return new THREE.CanvasTexture(c);
+}
+function createSign(text, w = 6, h = 1.5, opts = {}) {
+    const front = new THREE.MeshStandardMaterial({ map: textTexture(text, opts), roughness: 0.8 });
+    const side = mat(opts.side || 0x5a3a22);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.15), [side, side, side, side, front, side]);
+    m.castShadow = true; return m;
+}
+
+// ===================== Characters =====================
+// Blocky R6 people, same proportions as Series 1. Options pick clothes, hair and hats.
+function createPerson(o = {}) {
+    const {
+        shirt = 0x5b7fa6, legs = 0x2b2d42, skin = 0xe0ac69, sleeves = null,
+        hair = null, hairStyle = 'short', hat = null, hatColor = null,
+        beard = null, child = false, scale = 1, coat = null, shoes = 0x2a2018,
+        belt = null, apron = null, glasses = false, star = false, sash = null, vest = null
+    } = o;
+    const avatar = new THREE.Group();
+    const inner = new THREE.Group(); // scaled body, so avatar.scale stays free for scenes
+    const s = (child ? 0.72 : 1) * scale;
+    inner.scale.setScalar(s);
+    avatar.add(inner);
+
+    const torso = box(2, 2, 1, shirt, 0, 3, 0);
+    inner.add(torso);
+    if (vest) { inner.add(box(2.06, 1.9, 1.06, vest, 0, 3.02, 0)); inner.add(box(0.7, 1.9, 1.1, shirt, 0, 3.02, 0)); }
+    if (belt) inner.add(box(2.06, 0.25, 1.06, belt, 0, 2.15, 0));
+    if (apron) inner.add(box(1.6, 2.4, 0.08, apron, 0, 2.3, 0.54));
+    if (sash) { const sh = box(0.35, 2.6, 1.08, sash, 0, 3, 0); sh.rotation.z = 0.7; inner.add(sh); }
+    if (star) { const st = cyl(0.22, 0.22, 0.06, mat(0xffd34d, { metalness: 0.8, roughness: 0.25 }), -0.5, 3.4, 0.53, 5); st.rotation.x = Math.PI / 2; inner.add(st); }
+    if (coat) {
+        inner.add(box(2.12, 2.05, 1.12, coat, 0, 3, 0));
+        const skirt = box(2.16, 1.5, 1.16, coat, 0, 1.3, 0); inner.add(skirt);
+        inner.add(box(0.06, 3.3, 0.02, 0x1d1d1d, 0, 2.3, 0.59));
+    }
+
+    const headG = new THREE.Group(); headG.position.y = 4.6; inner.add(headG);
+    headG.add(box(1.2, 1.2, 1.2, skin, 0, 0, 0));
+    const eyeMat = glowMat(0x111111);
+    const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.22, 0.05), eyeMat); eyeL.position.set(-0.28, 0.1, 0.61);
+    const eyeR = eyeL.clone(); eyeR.position.x = 0.28;
+    const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.07, 0.05), glowMat(0x5a2a1a)); mouth.position.set(0, -0.28, 0.61);
+    headG.add(eyeL, eyeR, mouth);
+    if (glasses) {
+        const gm = mat(0x222222);
+        headG.add(box(0.36, 0.3, 0.04, gm, -0.28, 0.1, 0.64), box(0.36, 0.3, 0.04, gm, 0.28, 0.1, 0.64), box(0.24, 0.06, 0.04, gm, 0, 0.16, 0.64));
+        headG.add(box(0.26, 0.2, 0.02, glowMat(0xbfe6ff, 0.35), -0.28, 0.1, 0.665), box(0.26, 0.2, 0.02, glowMat(0xbfe6ff, 0.35), 0.28, 0.1, 0.665));
+    }
+    if (beard !== null) { headG.add(box(1.0, 0.45, 0.25, beard, 0, -0.42, 0.55)); headG.add(box(1.22, 0.7, 0.2, beard, 0, -0.25, 0.5)); headG.children[headG.children.length - 1].scale.set(1, 0.6, 1); }
+
+    if (hair !== null) {
+        const hm = mat(hair, { roughness: 1 });
+        if (hairStyle === 'short') { headG.add(box(1.28, 0.32, 1.28, hm, 0, 0.66, 0), box(1.28, 0.9, 0.2, hm, 0, 0.25, -0.58)); }
+        else if (hairStyle === 'long') { headG.add(box(1.3, 0.34, 1.3, hm, 0, 0.66, 0), box(1.32, 1.6, 0.3, hm, 0, -0.1, -0.55)); }
+        else if (hairStyle === 'bun') { headG.add(box(1.28, 0.32, 1.28, hm, 0, 0.66, 0), sph(0.35, hm, 0, 0.75, -0.55, 8)); }
+        else if (hairStyle === 'queue') { headG.add(box(1.28, 0.26, 1.28, hm, 0, 0.66, 0), box(0.2, 1.8, 0.2, hm, 0, -0.5, -0.7)); }
+        else if (hairStyle === 'curly') {
+            const r = makeRand(7);
+            for (let i = 0; i < 26; i++) {
+                const a = r() * Math.PI * 2, top = i < 12;
+                const x = top ? (r() - 0.5) * 1.15 : Math.cos(a) * 0.62, z = top ? (r() - 0.5) * 1.15 : Math.sin(a) * 0.62;
+                const y = top ? 0.62 + r() * 0.2 : 0.2 + r() * 0.35;
+                if (!top && z > 0.35) continue; // keep the face clear
+                const c = new THREE.Mesh(new THREE.DodecahedronGeometry(0.24 + r() * 0.08, 0), hm);
+                c.position.set(x, y, z); c.castShadow = true; headG.add(c);
+            }
+            headG.add(box(1.26, 0.28, 1.26, hm, 0, 0.6, -0.02));
+        }
+    }
+    if (hat) {
+        const hc = hatColor !== null ? hatColor : 0x222222;
+        if (hat === 'tricorn') { const t = cyl(1.0, 1.0, 0.3, hc, 0, 0.75, 0, 3); t.rotation.y = Math.PI / 6; headG.add(t, cyl(0.62, 0.66, 0.45, hc, 0, 0.95, 0, 12)); headG.add(cyl(1.02, 1.02, 0.06, mat(0xd4af37, { metalness: 0.7 }), 0, 0.62, 0, 3)); headG.children[headG.children.length - 1].rotation.y = Math.PI / 6; }
+        else if (hat === 'bandana') { headG.add(box(1.3, 0.42, 1.3, hc, 0, 0.55, 0), box(0.25, 0.5, 0.15, hc, 0.35, 0.2, -0.7)); }
+        else if (hat === 'straw') { headG.add(cone(1.35, 0.65, hc, 0, 0.95, 0, 16)); }
+        else if (hat === 'helmet') { headG.add(box(1.36, 0.7, 1.36, mat(hc, { metalness: 0.7, roughness: 0.3 }), 0, 0.5, 0), box(0.14, 0.55, 0.1, mat(hc, { metalness: 0.7, roughness: 0.3 }), 0, 0.05, 0.66)); }
+        else if (hat === 'turban') { headG.add(cyl(0.78, 0.7, 0.62, hc, 0, 0.78, 0, 14), sph(0.55, hc, 0, 1.05, 0, 10), sph(0.13, mat(0x2a9d8f, { emissive: 0x0a4d45 }), 0, 0.85, 0.72, 6)); }
+        else if (hat === 'cowboy') { headG.add(cyl(1.3, 1.3, 0.08, hc, 0, 0.66, 0, 18), cyl(0.58, 0.68, 0.62, hc, 0, 0.98, 0, 14), cyl(0.69, 0.69, 0.12, 0x3a2414, 0, 0.75, 0, 14)); }
+        else if (hat === 'fedora') { headG.add(cyl(1.15, 1.15, 0.07, hc, 0, 0.64, 0, 20), cyl(0.6, 0.68, 0.62, hc, 0, 0.96, 0, 16), cyl(0.69, 0.69, 0.14, 0x111111, 0, 0.74, 0, 16)); }
+        else if (hat === 'cap') { headG.add(box(1.3, 0.3, 1.3, hc, 0, 0.7, 0), box(1.0, 0.08, 0.5, hc, 0, 0.58, 0.8)); }
+        else if (hat === 'tophat') { headG.add(cyl(1.0, 1.0, 0.07, hc, 0, 0.64, 0, 18), cyl(0.58, 0.58, 1.1, hc, 0, 1.2, 0, 16)); }
+        else if (hat === 'hood') { headG.add(box(1.36, 1.36, 1.3, hc, 0, 0.12, -0.08)); headG.children[0].visible = true; }
+        else if (hat === 'coif') { headG.add(box(1.32, 1.0, 1.32, mat(hc, { metalness: 0.5, roughness: 0.5 }), 0, 0.3, -0.05)); }
+        else if (hat === 'space') {
+            headG.add(sph(1.05, mat(0xf4f4f4, { roughness: 0.4 }), 0, 0.05, 0, 18));
+            const visor = sph(0.92, mat(0xd4a017, { metalness: 0.9, roughness: 0.15 }), 0, 0.05, 0.22, 18); visor.scale.set(1, 0.85, 0.8); headG.add(visor);
+        }
+    }
+
+    const armColor = sleeves !== null ? sleeves : (coat !== null ? coat : shirt);
+    const mkLimb = (x, y, w, color, isLeg) => {
+        const g = new THREE.Group(); g.position.set(x, y, 0);
+        const m = box(isLeg ? 0.9 : 1, 2, 1, color, 0, -1, 0); g.add(m);
+        if (!isLeg) g.add(box(0.9, 0.35, 0.9, skin, 0, -2.05, 0));
+        else g.add(box(0.95, 0.36, 1.12, shoes, 0, -1.84, 0.08));
+        inner.add(g); return g;
+    };
+    const leftArmGroup = mkLimb(-1.5, 4, 1, armColor, false);
+    const rightArmGroup = mkLimb(1.5, 4, 1, armColor, false);
+    const leftLegGroup = mkLimb(-0.55, 2, 0.9, legs, true);
+    const rightLegGroup = mkLimb(0.55, 2, 0.9, legs, true);
+
+    avatar.inner = inner;
+    avatar.rig = { leftArmGroup, rightArmGroup, leftLegGroup, rightLegGroup, torso, head: headG };
+    avatar.walkCycleTime = Math.random() * 10;
+    return avatar;
+}
+
+const GEM_COLORS = [0xff4d5e, 0xff9f1c, 0xffd60a, 0x4cd964, 0x2ec4f1, 0x3a6bff, 0xb05cff];
+const GEM_CSS = ['#ff4d5e', '#ff9f1c', '#ffd60a', '#4cd964', '#2ec4f1', '#3a6bff', '#b05cff'];
+
+// The brass pocket watch: glowing face, moving hands, 7 gem slots around the rim.
+function createWatch({ dark = false, size = 1 } = {}) {
+    const w = new THREE.Group();
+    const brass = mat(dark ? 0x3a3340 : 0xc9a240, { metalness: 0.85, roughness: 0.28 });
+    const rim = cyl(0.46, 0.46, 0.12, brass, 0, 0, 0, 28); rim.rotation.x = Math.PI / 2; w.add(rim);
+    const faceMat = new THREE.MeshBasicMaterial({ color: dark ? 0x7a2bd6 : 0x4fc3ff });
+    const face = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.13, 28), faceMat); face.rotation.x = Math.PI / 2; w.add(face);
+    const hand1 = box(0.05, 0.28, 0.02, glowMat(0x10203a), 0, 0.12, 0.075); const hand2 = box(0.04, 0.2, 0.02, glowMat(0x10203a), 0, 0.08, 0.075);
+    const h1 = group(hand1), h2 = group(hand2); h1.position.z = 0; h2.position.z = 0; w.add(h1, h2);
+    w.add(cyl(0.08, 0.08, 0.14, brass, 0, 0.52, 0, 8), cyl(0.12, 0.12, 0.05, brass, 0, 0.62, 0, 10));
+    const glow = createGlow(dark ? 0xa04cff : 0x6fd3ff, 1.6, 0.55); glow.position.z = 0.1; w.add(glow);
+    const gems = [];
+    for (let i = 0; i < 7; i++) {
+        const a = Math.PI / 2 - (i + 0.5) * (Math.PI * 2 / 8) - Math.PI / 8;
+        const g = new THREE.Mesh(new THREE.OctahedronGeometry(0.075, 0), new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4 }));
+        g.position.set(Math.cos(a) * 0.41, Math.sin(a) * 0.41, 0.08); w.add(g); gems.push(g);
+    }
+    let pulse = 0, power = 1;
+    w.setGems = n => {
+        gems.forEach((g, i) => {
+            const on = !dark && i < n;
+            g.material.color.setHex(on ? GEM_COLORS[i] : (dark ? 0x221a2a : 0x2e2e2e));
+            g.material.emissive.setHex(on ? GEM_COLORS[i] : 0x000000);
+            g.material.emissiveIntensity = on ? 0.9 : 0;
+            g.scale.setScalar(on ? 1.35 : 1);
+        });
+    };
+    w.pulse = () => { pulse = 1; };
+    w.setPower = p => { power = p; };
+    let tt = Math.random() * 10;
+    addFx(() => {
+        tt += 1 / 60;
+        h1.rotation.z = -tt * 0.9 * power; h2.rotation.z = -tt * 0.08 * power;
+        pulse = Math.max(0, pulse - 0.012);
+        const s = (1.4 + Math.sin(tt * 3) * 0.15) * (0.4 + power * 0.6) + pulse * 5;
+        glow.scale.set(s, s, 1);
+        glow.material.opacity = 0.35 + 0.25 * power + pulse * 0.4;
+    });
+    w.scale.setScalar(size);
+    w.face = face; w.gems = gems;
+    w.setGems(0);
+    return w;
+}
+
+let currentGems = 0;
+// Mohamed: a 12-year-old in a red hoodie, jeans, white sneakers, backpack and the watch.
+function createKid(o = {}) {
+    const k = createPerson(Object.assign({ shirt: 0xc8102e, legs: 0x3d6aa8, skin: 0xc98b5a, hair: 0x111111, hairStyle: 'curly', child: true, shoes: 0xf6f6f6 }, o));
+    const b = k.inner;
+    b.add(box(1.8, 0.45, 0.55, 0xa50d24, 0, 4.0, -0.42));              // folded hood
+    b.add(box(1.3, 0.5, 0.06, 0xa80c25, 0, 2.45, 0.53));               // front pocket
+    b.add(box(0.06, 0.6, 0.04, 0xffffff, -0.25, 3.6, 0.53), box(0.06, 0.6, 0.04, 0xffffff, 0.25, 3.6, 0.53));
+    b.add(box(1.5, 1.6, 0.62, 0x1f7a70, 0, 3.0, -0.82));               // backpack
+    b.add(box(1.2, 0.6, 0.2, 0x26968a, 0, 2.6, -1.18));
+    b.add(box(0.22, 0.18, 1.3, 0x1b1b1b, -0.6, 3.95, -0.1), box(0.22, 0.18, 1.3, 0x1b1b1b, 0.6, 3.95, -0.1));
+    // Hood edge on the shoulders hides the strap overlap.
+    const chainMat = mat(0xd9b54a, { metalness: 0.9, roughness: 0.3 });
+    const c1 = box(0.05, 0.85, 0.04, chainMat, -0.22, 3.75, 0.53); c1.rotation.z = -0.5;
+    const c2 = box(0.05, 0.85, 0.04, chainMat, 0.22, 3.75, 0.53); c2.rotation.z = 0.5;
+    b.add(c1, c2);
+    const w = createWatch(); w.position.set(0, 3.05, 0.6); w.scale.setScalar(0.95); b.add(w);
+    k.watch = w;
+    k.setGems = n => w.setGems(n);
+    k.setGems(o.gems !== undefined ? o.gems : currentGems);
+    return k;
+}
+
+// The Collector: a tall man in a long grey coat with a dark watch of his own.
+function createCollector(o = {}) {
+    const c = createPerson(Object.assign({ shirt: 0x2f3035, legs: 0x2a2b2f, coat: 0x6b6f76, skin: 0xd1b394, hair: 0x2a2a2a, hairStyle: 'short', hat: 'fedora', hatColor: 0x2b2d31, shoes: 0x111111, scale: 1.08, beard: null }, o));
+    const b = c.inner;
+    b.add(box(2.3, 0.5, 1.25, 0x5a5e65, 0, 3.85, 0));                    // turned-up collar
+    b.add(box(1.26, 0.18, 0.1, 0x111111, 0, 4.74, 0.6));                 // brim shadow over the eyes
+    const lapel = box(0.5, 1.2, 0.05, 0x55595f, -0.35, 3.3, 0.62); lapel.rotation.z = 0.25;
+    const lapel2 = box(0.5, 1.2, 0.05, 0x55595f, 0.35, 3.3, 0.62); lapel2.rotation.z = -0.25;
+    b.add(lapel, lapel2);
+    // grey gloves
+    [c.rig.leftArmGroup, c.rig.rightArmGroup].forEach(g => g.children[1].material = mat(0x3d3f44));
+    const w = createWatch({ dark: true }); w.position.set(0.55, 2.7, 0.62); w.scale.setScalar(0.8); b.add(w);
+    const ch = box(0.04, 0.7, 0.04, mat(0x777777, { metalness: 0.8 }), 0.3, 3.05, 0.6); ch.rotation.z = 0.7; b.add(ch);
+    c.watch = w;
+    return c;
+}
+
+function createGrandpa(o = {}) {
+    return createPerson(Object.assign({ shirt: 0x8a6a48, legs: 0x55575c, skin: 0xc98b5a, hair: 0xe6e6e6, hairStyle: 'short', beard: 0xe6e6e6, glasses: true, vest: 0x6b4f33 }, o));
+}
+
+// ---- Poses (all respectful: hand on heart, handshakes, waves, raised hands, applause) ----
+function pose(a, p = {}) {
+    const r = a.rig;
+    r.leftArmGroup.rotation.set(p.la || 0, 0, p.laz || 0);
+    r.rightArmGroup.rotation.set(p.ra || 0, 0, p.raz || 0);
+    r.leftLegGroup.rotation.x = p.ll || 0;
+    r.rightLegGroup.rotation.x = p.rl || 0;
+    if (p.head !== undefined) r.head.rotation.y = p.head;
+    if (p.nod !== undefined) r.head.rotation.x = p.nod;
+}
+function idle(a, t, ph = 0) { const s = Math.sin(t * 1.6 + ph); pose(a, { la: s * 0.05, ra: -s * 0.05, laz: 0.04, raz: -0.04 }); }
+function heart(a) { pose(a, { ra: -1.25, raz: -0.75, la: 0.05 }); }
+function wave(a, t) { pose(a, { ra: -2.7, raz: 0.25 + Math.sin(t * 9) * 0.3 }); }
+function point(a, t = 0) { pose(a, { ra: -1.55 + Math.sin(t * 2) * 0.04 }); }
+function cheer(a, t, ph = 0) { const s = Math.sin(t * 5 + ph) * 0.15; pose(a, { la: -2.85 + s, ra: -2.85 - s, laz: -0.2, raz: 0.2 }); }
+function clap(a, t, ph = 0) { const s = Math.abs(Math.sin(t * 7 + ph)); pose(a, { la: -1.3, ra: -1.3, laz: 0.32 + 0.3 * s, raz: -0.32 - 0.3 * s }); }
+function shake(a, t) { pose(a, { ra: -1.05 + Math.sin(t * 9) * 0.1, raz: -0.15 }); }
+function think(a, t) { pose(a, { ra: -2.2, raz: -0.7, la: -0.9, laz: 0.6 }); }
+function shock(a) { pose(a, { la: -0.7, ra: -0.7, laz: -0.5, raz: 0.5 }); }
+function carry(a, t = 0) { pose(a, { la: -1.25, ra: -1.25, laz: 0.2, raz: -0.2 }); }
+function work(a, t, ph = 0) { const s = Math.sin(t * 5 + ph); pose(a, { la: -1.2 + s * 0.5, ra: -1.2 - s * 0.5 }); }
+function holdUp(a, t = 0) { pose(a, { ra: -2.5, raz: -0.1 }); }
+function run(a, t, ph = 0) { const s = Math.sin(t * 13 + ph) * 0.9; pose(a, { la: s, ra: -s, ll: -s, rl: s }); }
+
+// Walk toward a point each step. Returns true while still walking.
+function walkTo(actor, tx, tz, speed = 0.08) {
+    const dx = tx - actor.position.x, dz = tz - actor.position.z, dist = Math.hypot(dx, dz);
+    if (dist > 0.3) {
+        actor.rotation.y = lerpAngle(actor.rotation.y, Math.atan2(dx, dz), 0.15);
+        actor.position.x += (dx / dist) * Math.min(speed, dist);
+        actor.position.z += (dz / dist) * Math.min(speed, dist);
+        actor.walkCycleTime += 0.15 * Math.min(2, speed / 0.06);
+        const swing = Math.sin(actor.walkCycleTime) * 0.65;
+        pose(actor, { la: swing, ra: -swing, ll: -swing, rl: swing });
+        return true;
+    }
+    pose(actor, {});
+    return false;
+}
+function face(actor, x, z, k = 0.12) { actor.rotation.y = lerpAngle(actor.rotation.y, Math.atan2(x - actor.position.x, z - actor.position.z), k); }
+
+// ===================== Effects =====================
+function createPortal(radius = 4, colors = [0x4fc3ff, 0x9be7ff, 0xffd166, 0x3a6bff], coreOpacity = 0.9) {
+    const g = new THREE.Group();
+    const rings = [];
+    for (let i = 0; i < 6; i++) {
+        const m = new THREE.MeshBasicMaterial({ color: colors[i % colors.length], transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+        const r = new THREE.Mesh(new THREE.TorusGeometry(radius * (1 - i * 0.13), 0.09 + i * 0.015, 8, 64), m);
+        g.add(r); rings.push(r);
+    }
+    const core = createGlow(0x9be7ff, radius * 2.6, coreOpacity); g.add(core);
+    const n = 260, pos = new Float32Array(n * 3), seeds = [];
+    for (let i = 0; i < n; i++) seeds.push([Math.random() * Math.PI * 2, 0.2 + Math.random(), Math.random() * 2 - 1]);
+    const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const pts = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0xcff4ff, size: 0.18, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+    g.add(pts);
+    let t = 0, power = 1;
+    g.setPower = p => { power = p; };
+    addFx(() => {
+        t += 1 / 60;
+        rings.forEach((r, i) => { r.rotation.z = t * (0.6 + i * 0.35) * (i % 2 ? -1 : 1); r.rotation.x = Math.sin(t * 0.7 + i) * 0.25; r.material.opacity = 0.75 * power; r.scale.setScalar(Math.max(0.001, power) * (1 + Math.sin(t * 3 + i) * 0.03)); });
+        core.material.opacity = coreOpacity * power; core.scale.set(radius * 2.6 * power, radius * 2.6 * power, 1);
+        for (let i = 0; i < n; i++) {
+            const [a0, sp, zz] = seeds[i]; const a = a0 + t * sp * 2; const rr = radius * (0.2 + ((t * sp * 0.4 + a0) % 1)) * power;
+            pos[i * 3] = Math.cos(a) * rr; pos[i * 3 + 1] = Math.sin(a) * rr; pos[i * 3 + 2] = zz * 0.6;
+        }
+        pg.attributes.position.needsUpdate = true; pts.material.opacity = 0.9 * power;
+    });
+    return g;
+}
+
+// A burst of sparkles that flies outward and fades. Call burst.fire() to set it off.
+function createBurst(color = 0xffffff, count = 120, speed = 0.25) {
+    const pos = new Float32Array(count * 3), vel = [];
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const m = new THREE.PointsMaterial({ color, size: 0.3, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+    const p = new THREE.Points(g, m);
+    let life = 0;
+    p.fire = () => {
+        life = 1;
+        for (let i = 0; i < count; i++) {
+            pos[i * 3] = pos[i * 3 + 1] = pos[i * 3 + 2] = 0;
+            const a = Math.random() * Math.PI * 2, b = Math.acos(Math.random() * 2 - 1), v = speed * (0.4 + Math.random());
+            vel[i] = [Math.sin(b) * Math.cos(a) * v, Math.cos(b) * v, Math.sin(b) * Math.sin(a) * v];
+        }
+    };
+    addFx(() => {
+        if (life <= 0) { m.opacity = 0; return; }
+        life -= 0.012; m.opacity = Math.max(0, life);
+        for (let i = 0; i < count; i++) { pos[i * 3] += vel[i][0]; pos[i * 3 + 1] += vel[i][1]; pos[i * 3 + 2] += vel[i][2]; vel[i][0] *= 0.97; vel[i][1] *= 0.97; vel[i][2] *= 0.97; }
+        g.attributes.position.needsUpdate = true;
+    });
+    return p;
+}
+
+const flashEl = document.getElementById('flash');
+function flashScreen(color = '#ffffff', ms = 900) {
+    if (!flashEl) return;
+    flashEl.style.transition = 'none'; flashEl.style.background = color; flashEl.style.opacity = '0.9';
+    void flashEl.offsetHeight;
+    flashEl.style.transition = `opacity ${ms}ms ease`; flashEl.style.opacity = '0';
+}
+
+// Light the next gem on the kid's watch with a flash, a sparkle burst and the corner meter.
+function lightGem(kid, n) {
+    kid.setGems(n); kid.watch.pulse();
+    const b = createBurst(GEM_COLORS[n - 1], 160, 0.22);
+    const wp = new THREE.Vector3(); kid.watch.getWorldPosition(wp); b.position.copy(wp); add(b); b.fire();
+    setGemHud(n, true);
+    flashScreen(GEM_CSS[n - 1], 1100);
+}
+
+const gemHud = document.getElementById('gem-hud');
+function setGemHud(n, pop) {
+    if (!gemHud) return;
+    gemHud.querySelectorAll('i').forEach((el, i) => { el.style.background = i < n ? GEM_CSS[i] : 'transparent'; el.style.boxShadow = i < n ? `0 0 8px ${GEM_CSS[i]}` : 'none'; });
+    if (pop) { gemHud.classList.remove('pop'); void gemHud.offsetWidth; gemHud.classList.add('pop'); }
+}
+
+// ===================== World pieces =====================
+function createStars(count = 700, radius = 300, size = 0.9) {
+    const pos = new Float32Array(count * 3); const r = makeRand(11);
+    for (let i = 0; i < count; i++) {
+        const a = r() * Math.PI * 2, b = r() * Math.PI * 0.48;
+        pos[i * 3] = Math.cos(a) * Math.cos(b) * radius; pos[i * 3 + 1] = Math.sin(b) * radius + 5; pos[i * 3 + 2] = Math.sin(a) * Math.cos(b) * radius;
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    return new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size, sizeAttenuation: true, fog: false }));
+}
+function createSkyDisk(color = 0xfff1c4, size = 10, x = -60, y = 50, z = -160) {
+    const g = group(); const d = new THREE.Mesh(new THREE.CircleGeometry(size, 32), new THREE.MeshBasicMaterial({ color, fog: false }));
+    g.add(d); const gl = createGlow(color, size * 3.2, 0.35); gl.material.fog = false; g.add(gl);
+    g.position.set(x, y, z); g.lookAt(0, 5, 30); return g;
+}
+function createClouds(n = 8, y = 40, spread = 200, seed = 3, color = 0xffffff) {
+    const g = group(); const r = makeRand(seed); const m = mat(color, { roughness: 1 });
+    for (let i = 0; i < n; i++) {
+        const c = group();
+        for (let k = 0; k < 4; k++) { const s = sph(3 + r() * 3, m, k * 4 - 6, r() * 1.5, r() * 2, 8); s.castShadow = false; s.scale.y = 0.6; c.add(s); }
+        c.position.set((r() - 0.5) * spread, y + r() * 15, -40 - r() * spread * 0.6); g.add(c);
+    }
+    addFx(() => g.children.forEach((c, i) => { c.position.x += 0.01 + i * 0.002; if (c.position.x > spread / 2) c.position.x = -spread / 2; }));
+    return g;
+}
+// Low-poly sea with rolling waves.
+function createSea(color = 0x1f6a9a, size = 400, y = 0, amp = 0.35, segs = 70) {
+    const geo = new THREE.PlaneGeometry(size, size, segs, segs);
+    const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, roughness: 0.45, metalness: 0.1, flatShading: true }));
+    m.rotation.x = -Math.PI / 2; m.position.y = y; m.receiveShadow = true;
+    const p = geo.attributes.position; const base = Float32Array.from(p.array);
+    let t = 0; m.amp = amp;
+    addFx(() => {
+        t += 1 / 60;
+        for (let i = 0; i < p.count; i++) { const x = base[i * 3], yy = base[i * 3 + 1]; p.array[i * 3 + 2] = (Math.sin(x * 0.12 + t * 1.3) + Math.cos(yy * 0.15 + t * 1.1)) * m.amp; }
+        p.needsUpdate = true;
+    });
+    return m;
+}
+function createMountain(x, z, h = 30, r = 20, color = 0x6b6f5a, snow = false, seed = 1) {
+    const g = group(); const m = cone(r, h, mat(color, { flatShading: true, roughness: 1 }), 0, h / 2, 0, 7);
+    m.rotation.y = seed; g.add(m);
+    if (snow) { const s = cone(r * 0.32, h * 0.32, mat(0xf2f2f2, { flatShading: true }), 0, h * 0.84, 0, 7); s.rotation.y = seed; g.add(s); }
+    g.position.set(x, 0, z); return g;
+}
+function createRock(x, y, z, s = 1, color = 0x7d7468) {
+    const m = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), mat(color, { flatShading: true, roughness: 1 }));
+    m.position.set(x, y, z); m.rotation.set(x, z, y); m.castShadow = true; m.receiveShadow = true; return m;
+}
+function createTree(x, z, s = 1, leaf = 0x3f7a3a, trunk = 0x5a3b26) {
+    const g = group(cyl(0.35 * s, 0.55 * s, 5 * s, trunk, 0, 2.5 * s, 0, 7));
+    const lm = mat(leaf, { flatShading: true, roughness: 1 });
+    [[0, 6, 0, 2.4], [1.3, 5.2, 0.4, 1.7], [-1.3, 5.3, -0.3, 1.8], [0.2, 7.2, -0.3, 1.5]].forEach(([a, b, c, r]) => { const l = new THREE.Mesh(new THREE.DodecahedronGeometry(r * s, 0), lm); l.position.set(a * s, b * s, c * s); l.castShadow = true; g.add(l); });
+    g.position.set(x, 0, z); return g;
+}
+function createPine(x, z, s = 1, leaf = 0x2f5a3a) {
+    const g = group(cyl(0.3 * s, 0.4 * s, 2.5 * s, 0x4a3322, 0, 1.25 * s, 0, 6));
+    const lm = mat(leaf, { flatShading: true });
+    for (let i = 0; i < 3; i++) g.add(cone((2.6 - i * 0.6) * s, 3.2 * s, lm, 0, (3 + i * 1.8) * s, 0, 7));
+    g.position.set(x, 0, z); return g;
+}
+function createPalm(x, z, s = 1) {
+    const g = group(); const tm = mat(0x7a5a3a);
+    for (let i = 0; i < 6; i++) { const seg = cyl(0.32 * s, 0.38 * s, 1.3 * s, tm, i * 0.12 * s, (0.65 + i * 1.2) * s, 0, 7); seg.rotation.z = -0.05 * i; g.add(seg); }
+    const lm = mat(0x3f8a3a, { flatShading: true, side: THREE.DoubleSide });
+    for (let i = 0; i < 7; i++) { const l = box(0.6 * s, 0.1 * s, 3.4 * s, lm, 0, 0, 1.6 * s); const p = group(l); p.position.set(0.7 * s, 7.4 * s, 0); p.rotation.y = i * Math.PI * 2 / 7; p.rotation.x = 0.35; g.add(p); }
+    g.position.set(x, 0, z); return g;
+}
+function createCactus(x, z, s = 1) {
+    const m = mat(0x4f8a4a, { flatShading: true });
+    const g = group(cyl(0.45 * s, 0.5 * s, 5 * s, m, 0, 2.5 * s, 0, 8), cyl(0.3 * s, 0.3 * s, 1.8 * s, m, 1.0 * s, 3.3 * s, 0, 8), cyl(0.3 * s, 0.3 * s, 1.4 * s, m, -1.0 * s, 2.8 * s, 0, 8));
+    const a1 = cyl(0.28 * s, 0.28 * s, 1 * s, m, 0.6 * s, 2.5 * s, 0, 8); a1.rotation.z = Math.PI / 2; const a2 = a1.clone(); a2.position.set(-0.6 * s, 2.1 * s, 0);
+    g.add(a1, a2); g.position.set(x, 0, z); return g;
+}
+function createBush(x, z, s = 1, color = 0x3f6b35) { const m = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), mat(color, { flatShading: true })); m.position.set(x, s * 0.6, z); m.scale.y = 0.7; m.castShadow = true; return m; }
+function createCrate(x, z, s = 1, color = 0x9a6a3a, y = 0) { const g = group(box(1.6 * s, 1.6 * s, 1.6 * s, color, 0, 0.8 * s, 0), box(1.65 * s, 0.2 * s, 1.65 * s, 0x6a4424, 0, 1.45 * s, 0), box(1.65 * s, 0.2 * s, 1.65 * s, 0x6a4424, 0, 0.15 * s, 0)); g.position.set(x, y, z); return g; }
+function createBarrel(x, z, s = 1, color = 0x8a5a32, y = 0) { const g = group(cyl(0.7 * s, 0.7 * s, 1.8 * s, color, 0, 0.9 * s, 0, 12), cyl(0.74 * s, 0.74 * s, 0.12 * s, 0x333333, 0, 0.4 * s, 0, 12), cyl(0.74 * s, 0.74 * s, 0.12 * s, 0x333333, 0, 1.4 * s, 0, 12)); g.position.set(x, y, z); return g; }
+function createSack(x, z, s = 1, color = 0xcdb68a) { const g = group(sph(0.7 * s, color, 0, 0.6 * s, 0, 8), cyl(0.2 * s, 0.35 * s, 0.4 * s, color, 0, 1.25 * s, 0, 8)); g.children[0].scale.y = 1.1; g.position.set(x, 0, z); return g; }
+function createTable(x, z, w = 4, d = 2, h = 2, color = 0x7a5232) { const g = group(box(w, 0.2, d, color, 0, h, 0)); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => g.add(box(0.2, h, 0.2, color, a * (w / 2 - 0.2), h / 2, b * (d / 2 - 0.2)))); g.position.set(x, 0, z); return g; }
+function createStool(x, z, color = 0x7a5232) { const g = group(cyl(0.6, 0.6, 0.2, color, 0, 1.3, 0, 10)); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => g.add(box(0.12, 1.3, 0.12, color, a * 0.35, 0.65, b * 0.35))); g.position.set(x, 0, z); return g; }
+function createFire(x, z, s = 1) {
+    const g = group(); const wood = mat(0x4a2e1a);
+    for (let i = 0; i < 4; i++) { const l = cyl(0.15 * s, 0.15 * s, 1.8 * s, wood, 0, 0.15 * s, 0, 6); l.rotation.z = Math.PI / 2; l.rotation.y = i * Math.PI / 4; g.add(l); }
+    const f1 = cone(0.6 * s, 1.6 * s, glowMat(0xff7a1a), 0, 0.9 * s, 0, 6), f2 = cone(0.35 * s, 1.1 * s, glowMat(0xffd166), 0, 0.75 * s, 0, 6);
+    g.add(f1, f2); const gl = createGlow(0xff9a3a, 4 * s, 0.6); gl.position.y = 1 * s; g.add(gl);
+    let t = Math.random() * 9; addFx(() => { t += 0.1; f1.scale.set(1, 1 + Math.sin(t * 1.7) * 0.15, 1); f2.scale.set(1, 1 + Math.sin(t * 2.3) * 0.2, 1); gl.material.opacity = 0.5 + Math.sin(t * 1.3) * 0.1; });
+    g.position.set(x, 0, z); return g;
+}
+function createTorch(x, y, z, s = 1) {
+    const g = group(cyl(0.1 * s, 0.12 * s, 1.6 * s, 0x4a2e1a, 0, 0, 0, 6));
+    const f = cone(0.25 * s, 0.7 * s, glowMat(0xff8a2a), 0, 1.05 * s, 0, 6); g.add(f);
+    const gl = createGlow(0xffa040, 3 * s, 0.6); gl.position.y = 1.1 * s; g.add(gl);
+    let t = Math.random() * 9; addFx(() => { t += 0.12; f.scale.y = 1 + Math.sin(t) * 0.18; gl.material.opacity = 0.5 + Math.sin(t * 1.4) * 0.12; });
+    g.position.set(x, y, z); return g;
+}
+function createLantern(x, y, z, color = 0xffc36b, s = 1) {
+    const g = group(box(0.6 * s, 0.8 * s, 0.6 * s, glowMat(color), 0, 0, 0), box(0.7 * s, 0.1 * s, 0.7 * s, 0x2a2a2a, 0, 0.45 * s, 0), box(0.7 * s, 0.1 * s, 0.7 * s, 0x2a2a2a, 0, -0.45 * s, 0));
+    const gl = createGlow(color, 3.2 * s, 0.55); g.add(gl); g.position.set(x, y, z); return g;
+}
+// A thin rope/pole between two points.
+function createRope(a, b, color = 0x3a2a1a, r = 0.04) {
+    const p1 = new THREE.Vector3(...a), p2 = new THREE.Vector3(...b);
+    const d = new THREE.Vector3().subVectors(p2, p1); const len = d.length();
+    const c = cyl(r, r, len, color, 0, 0, 0, 5); c.castShadow = false;
+    c.position.copy(p1).add(p2).multiplyScalar(0.5);
+    c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+    return c;
+}
+const SKINS = [0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xffdbac, 0xa86b3c, 0x6b4226];
+// Floating clocks for the time tunnel.
+function createClockFace(r = 1, rim = 0xc9a240) {
+    const g = group(); const c = cyl(r, r, 0.2, mat(rim, { metalness: 0.7, roughness: 0.3 }), 0, 0, 0, 24); c.rotation.x = Math.PI / 2; g.add(c);
+    const f = cyl(r * 0.85, r * 0.85, 0.22, glowMat(0xf6f0dc), 0, 0, 0, 24); f.rotation.x = Math.PI / 2; g.add(f);
+    const h1 = box(r * 0.08, r * 0.7, 0.05, glowMat(0x222222), 0, r * 0.3, 0.13), h2 = box(r * 0.08, r * 0.5, 0.05, glowMat(0x222222), 0, r * 0.2, 0.14);
+    const a1 = group(h1), a2 = group(h2); g.add(a1, a2);
+    let t = Math.random() * 10, sp = 0.5 + Math.random() * 2; addFx(() => { t += 1 / 60; a1.rotation.z = -t * sp * 3; a2.rotation.z = -t * sp * 0.4; });
+    return g;
+}
+// The time tunnel: rings of light rushing past with clocks drifting by.
+function createTimeTunnel(count = 9, spacing = 8, colors) {
+    const g = group(); const portals = [];
+    for (let i = 0; i < count; i++) { const p = createPortal(7 + (i % 3), colors, 0.08); p.position.z = -i * spacing; g.add(p); portals.push(p); }
+    const clocks = []; const r = makeRand(21);
+    for (let i = 0; i < 14; i++) { const c = createClockFace(0.6 + r() * 0.9); c.position.set((r() - 0.5) * 12, (r() - 0.5) * 8 + 4, -r() * count * spacing); c.userData.spin = (r() - 0.5) * 0.04; g.add(c); clocks.push(c); }
+    addFx(() => {
+        portals.forEach(p => { p.position.z += 0.35; if (p.position.z > 12) p.position.z -= count * spacing; });
+        clocks.forEach(c => { c.position.z += 0.22; c.rotation.y += c.userData.spin; c.rotation.x += c.userData.spin * 0.5; if (c.position.z > 12) c.position.z -= count * spacing; });
+    });
+    return g;
+}
+
+// Interior room: floor plus back and side walls, open at the front for the camera.
+function createRoom({ w = 30, d = 22, h = 12, wall = 0x8a6a4a, floor = 0x6a4a32, trim = 0x4a3020, left = true, right = true, back = true } = {}) {
+    const g = group(box(w, 0.3, d, floor, 0, -0.1, 0));
+    if (back) g.add(box(w, h, 0.5, wall, 0, h / 2, -d / 2));
+    if (left) g.add(box(0.5, h, d, wall, -w / 2, h / 2, 0));
+    if (right) g.add(box(0.5, h, d, wall, w / 2, h / 2, 0));
+    if (back) g.add(box(w, 0.4, 0.6, trim, 0, 0.2, -d / 2 + 0.3));
+    return g;
+}
+function createDust(n = 160, w = 30, h = 12, d = 20, color = 0xfff2c8) {
+    const pos = new Float32Array(n * 3); const r = makeRand(5);
+    for (let i = 0; i < n; i++) { pos[i * 3] = (r() - 0.5) * w; pos[i * 3 + 1] = r() * h; pos[i * 3 + 2] = (r() - 0.5) * d; }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const p = new THREE.Points(g, new THREE.PointsMaterial({ color, size: 0.12, transparent: true, opacity: 0.7, depthWrite: false }));
+    let t = 0; addFx(() => { t += 1 / 60; for (let i = 0; i < n; i++) { pos[i * 3 + 1] += Math.sin(t + i) * 0.004 + 0.002; if (pos[i * 3 + 1] > h) pos[i * 3 + 1] = 0; } g.attributes.position.needsUpdate = true; });
+    return p;
+}
+function createRain(n = 900, area = 80, h = 40) {
+    const pos = new Float32Array(n * 6); const r = makeRand(9);
+    for (let i = 0; i < n; i++) { const x = (r() - 0.5) * area, y = r() * h, z = (r() - 0.5) * area; pos.set([x, y, z, x + 0.1, y - 0.9, z], i * 6); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const l = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0xaac4dd, transparent: true, opacity: 0.55 }));
+    addFx(() => { for (let i = 0; i < n; i++) { pos[i * 6 + 1] -= 0.9; pos[i * 6 + 4] -= 0.9; if (pos[i * 6 + 1] < 0) { pos[i * 6 + 1] += h; pos[i * 6 + 4] += h; } } g.attributes.position.needsUpdate = true; });
+    return l;
+}
+function createBirds(n = 5, y = 25, r = 30) {
+    const g = group(); const m = mat(0x222222, { side: THREE.DoubleSide });
+    const birds = [];
+    for (let i = 0; i < n; i++) { const b = group(); const w1 = box(1.2, 0.08, 0.4, m, -0.6, 0, 0), w2 = box(1.2, 0.08, 0.4, m, 0.6, 0, 0); b.add(w1, w2); b.w = [w1, w2]; g.add(b); birds.push(b); }
+    let t = 0; addFx(() => { t += 1 / 60; birds.forEach((b, i) => { const a = t * 0.3 + i * 1.3; b.position.set(Math.cos(a) * (r - i * 2), y + Math.sin(t + i) * 2, Math.sin(a) * (r - i * 2) - 20); b.rotation.y = -a; const f = Math.sin(t * 8 + i) * 0.5; b.w[0].rotation.z = f; b.w[1].rotation.z = -f; }); });
+    return g;
+}
+function createHorse(color = 0x6f4e37, mane = 0x2b1b12) {
+    const h = group(); const bm = mat(color), mm = mat(mane);
+    h.add(box(1.6, 1.6, 4, bm, 0, 3.2, 0));
+    const neck = box(1.0, 2.2, 1.1, bm, 0, 4.3, 1.9); neck.rotation.x = -0.5; h.add(neck);
+    const head = box(0.9, 0.9, 1.9, bm, 0, 5.2, 2.9); h.add(head);
+    h.add(box(0.3, 2.2, 0.8, mm, 0, 4.6, 1.6), box(0.3, 1.6, 0.4, mm, 0, 3.1, -2.2));
+    h.add(box(0.12, 0.12, 0.05, glowMat(0x111111), -0.46, 5.35, 3.4), box(0.12, 0.12, 0.05, glowMat(0x111111), 0.46, 5.35, 3.4));
+    const legs = [];
+    [[-0.55, 1.5], [0.55, 1.5], [-0.55, -1.5], [0.55, -1.5]].forEach(([x, z]) => { const lg = group(box(0.42, 2.5, 0.42, bm, 0, -1.25, 0), box(0.46, 0.3, 0.5, 0x222222, 0, -2.45, 0)); lg.position.set(x, 2.5, z); h.add(lg); legs.push(lg); });
+    h.legs = legs; h.phase = Math.random() * 6;
+    h.gallop = (t, speed = 1) => { legs.forEach((l, i) => { l.rotation.x = Math.sin(t * 10 * speed + h.phase + (i < 2 ? 0 : Math.PI)) * 0.6; }); h.children[0].position.y = 3.2 + Math.abs(Math.sin(t * 10 * speed)) * 0.15; };
+    h.stand = () => legs.forEach(l => l.rotation.x = 0);
+    return h;
+}
+// Seat a rider on a horse (both are added to one group).
+function mount(rider, horse) { const g = group(horse, rider); rider.position.set(0, 2.4, -0.2); pose(rider, { ll: -1.2, rl: -1.2, la: -0.6, ra: -0.6 }); return g; }
+
+// ===================== Moods =====================
+const MOODS = {
+    day: { sun: 1.35, sunColor: 0xfff4e0, amb: 0.62, ambColor: 0xffffff, hemi: 0.35, fog: 0.006 },
+    bright: { sun: 1.5, sunColor: 0xffffff, amb: 0.7, ambColor: 0xffffff, hemi: 0.4, fog: 0.003 },
+    golden: { sun: 1.25, sunColor: 0xffc27a, amb: 0.5, ambColor: 0xffe2c0, hemi: 0.3, fog: 0.007 },
+    dusk: { sun: 0.85, sunColor: 0xff8a5c, amb: 0.42, ambColor: 0xc9a0dc, hemi: 0.3, fog: 0.01 },
+    night: { sun: 0.45, sunColor: 0x9fb4ff, amb: 0.32, ambColor: 0x6f7fb8, hemi: 0.25, fog: 0.012 },
+    storm: { sun: 0.55, sunColor: 0xb0c4d8, amb: 0.42, ambColor: 0x8899aa, hemi: 0.25, fog: 0.02 },
+    indoor: { sun: 0.7, sunColor: 0xffd9a0, amb: 0.55, ambColor: 0xffe8cc, hemi: 0.3, fog: 0.0 },
+    attic: { sun: 0.5, sunColor: 0xffd9a0, amb: 0.62, ambColor: 0xe0c8a8, hemi: 0.35, fog: 0.0 },
+    dark: { sun: 0.3, sunColor: 0xffc890, amb: 0.28, ambColor: 0x8a7a9a, hemi: 0.15, fog: 0.008 },
+    space: { sun: 1.7, sunColor: 0xffffff, amb: 0.2, ambColor: 0x8899cc, hemi: 0.08, fog: 0.0 },
+    vortex: { sun: 0.6, sunColor: 0x88ccff, amb: 0.55, ambColor: 0x88aaff, hemi: 0.3, fog: 0.004 }
+};
+function applyMood(data) {
+    const mood = MOODS[data.mood] || MOODS.day;
+    scene.background = new THREE.Color(data.skyColor);
+    scene.fog.color.setHex(data.skyColor);
+    scene.fog.density = data.fog !== undefined ? data.fog : mood.fog;
+    sun.intensity = mood.sun; sun.color.setHex(mood.sunColor);
+    ambientLight.intensity = mood.amb; ambientLight.color.setHex(mood.ambColor);
+    hemiLight.intensity = mood.hemi;
+    const sp = data.sunPos || [40, 80, 40]; sun.position.set(sp[0], sp[1], sp[2]);
+    worldGround.visible = data.ground !== false;
+    if (typeof data.ground === 'number') worldGround.material.color.setHex(data.ground);
+}
+function gemsAt(index) {
+    for (let i = index; i >= 0; i--) if (storyData[i] && storyData[i].gems !== undefined) return storyData[i].gems;
+    return (window.SHOW_INFO && window.SHOW_INFO.startGems) || 0;
+}
+
+// ===================== Story player =====================
+let currentSceneIndex = 0;
+let activeSceneInstance = null;
+let autoPlay = true;
+let narratorEnabled = true;
+let sceneStartTime = Date.now();
+let sceneT = 0;
+let narratorVoice = null;
+let narratorUnlocked = false;
+
+function loadNarratorVoice() {
+    if (!('speechSynthesis' in window)) return;
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices.length) return;
+    narratorVoice = voices.find(v => /^en(-|_)/i.test(v.lang) && /Natural|Google UK English Male|Google US English|Microsoft David|Microsoft Mark|Daniel|Alex/i.test(v.name))
+        || voices.find(v => /^en(-|_)/i.test(v.lang) && /Google|Microsoft|Samantha|Daniel|Alex/i.test(v.name))
+        || voices.find(v => /^en(-|_)/i.test(v.lang))
+        || voices[0];
+}
+
+const NARRATOR_RATE = 0.92;
+let narrationState = 'done';
+let narrationEndedAt = 0;
+let narrationToken = 0;
+
+function finishNarration(token) {
+    if (token !== narrationToken) return;
+    narrationState = 'done';
+    narrationEndedAt = Date.now();
+}
+
+function speakScene(data) {
+    narrationToken++;
+    const token = narrationToken;
+    narrationState = 'done';
+    narrationEndedAt = 0;
+    if (!narratorEnabled || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    loadNarratorVoice();
+    // Read one sentence at a time: some browsers cut off long speech after ~15 seconds.
+    const text = `${data.title.replace(/^\d+\.\s*/, '')}. ${data.desc}`;
+    const parts = (text.match(/[^.!?]+[.!?]+["')\]]*|[^.!?]+$/g) || [text]).map(p => p.trim()).filter(Boolean);
+    narrationState = 'pending';
+    let started = false;
+    parts.forEach((part, i) => {
+        const u = new SpeechSynthesisUtterance(part);
+        if (narratorVoice) u.voice = narratorVoice;
+        u.lang = narratorVoice?.lang || 'en-US';
+        u.rate = NARRATOR_RATE;
+        u.pitch = 1.0;
+        u.volume = 1.0;
+        u.onstart = () => { if (token !== narrationToken) return; started = true; narratorUnlocked = true; narrationState = 'speaking'; };
+        if (i === parts.length - 1) {
+            u.onend = () => finishNarration(token);
+            u.onerror = () => finishNarration(token);
+        }
+        window.speechSynthesis.speak(u);
+    });
+    // If the browser blocks speech (no click yet), fall back to the normal timer.
+    setTimeout(() => { if (token === narrationToken && !started && !window.speechSynthesis.speaking) { narrationState = 'done'; narrationEndedAt = 0; } }, 3000);
+}
+
+function narrationHoldsScene() {
+    if (!narratorEnabled) return false;
+    if (narrationState === 'pending' || narrationState === 'speaking') return true;
+    // Short breath after the last sentence before moving on.
+    return narrationEndedAt && Date.now() - narrationEndedAt < 1500;
+}
+
+function toggleNarrator() {
+    narratorEnabled = !narratorEnabled;
+    const btn = document.getElementById('narrator-btn');
+    btn.innerText = `Narrator: ${narratorEnabled ? 'ON' : 'OFF'}`;
+    if (narratorEnabled) {
+        narratorUnlocked = true;
+        speakScene(storyData[currentSceneIndex]);
+    } else {
+        narrationToken++;
+        narrationState = 'done';
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    }
+}
+
+if ('speechSynthesis' in window) {
+    window.speechSynthesis.onvoiceschanged = loadNarratorVoice;
+    loadNarratorVoice();
+}
+
+function clearCurrentScene() {
+    for (let i = scene.children.length - 1; i >= 0; i--) {
+        const child = scene.children[i];
+        if (!KEEP.has(child)) scene.remove(child);
+    }
+}
+
+const camBase = new THREE.Vector3(), camLook = new THREE.Vector3(), camTmp = new THREE.Vector3();
+let transitioning = false;
+const fadeEl = document.getElementById('fade-overlay');
+
+function goToScene(index) {
+    if (transitioning) return;
+    transitioning = true;
+    fadeEl.style.opacity = '1';
+    setTimeout(() => {
+        loadScene(index);
+        fadeEl.style.opacity = '0';
+        setTimeout(() => { transitioning = false; }, 600);
+    }, 600);
+}
+
+function loadScene(index, speak = true) {
+    clearCurrentScene();
+    ambientFx = [];
+    currentSceneIndex = index;
+    sceneStartTime = Date.now();
+    sceneT = 0;
+
+    const data = storyData[index];
+    applyMood(data);
+    currentGems = index > 0 ? gemsAt(index - 1) : ((window.SHOW_INFO && window.SHOW_INFO.startGems) || 0);
+    if (data.gems !== undefined && !data.gemMoment) currentGems = data.gems;
+    setGemHud(currentGems, false);
+    document.getElementById('scene-title').innerText = data.title;
+    document.getElementById('scene-description').innerText = data.desc;
+    document.getElementById('scene-counter').innerText = `SCENE ${index + 1} / ${storyData.length}`;
+
+    camBase.set(...data.camPos); camLook.set(...data.camLookAt);
+    camera.position.copy(camBase);
+    camera.lookAt(camLook);
+
+    try { activeSceneInstance = data.setup() || {}; }
+    catch (err) { console.error('Scene setup error:', err); activeSceneInstance = {}; }
+    if (speak) speakScene(data);
+}
+
+function nextScene() {
+    goToScene((currentSceneIndex + 1) % storyData.length);
+}
+
+function prevScene() {
+    goToScene((currentSceneIndex - 1 + storyData.length) % storyData.length);
+}
+
+function toggleAutoPlay() {
+    autoPlay = !autoPlay;
+    document.getElementById('autoplay-btn').innerText = `Autoplay: ${autoPlay ? 'ON' : 'OFF'}`;
+    sceneStartTime = Date.now();
+}
+
+// One fixed simulation step (1/60 s).
+function stepScene() {
+    sceneT += 1 / 60;
+    if (activeSceneInstance && activeSceneInstance.update) {
+        try { activeSceneInstance.update(sceneT); } catch (err) { console.error('Scene update error:', err); }
+    }
+    for (let i = 0; i < ambientFx.length; i++) { try { ambientFx[i](); } catch (err) { } }
+}
+
+function placeCamera() {
+    const elapsed = sceneT * 1000;
+    const sceneP = Math.min(elapsed / getSceneDurationMs(currentSceneIndex), 1);
+    let followed = false;
+    if (activeSceneInstance && activeSceneInstance.cameraUpdate) {
+        try { followed = activeSceneInstance.cameraUpdate(sceneT, sceneP); } catch (err) { console.error('Camera error:', err); }
+    }
+    if (!followed) {
+        // Slow cinematic camera: gentle push-in with a soft side drift.
+        const e = sceneP * sceneP * (3 - 2 * sceneP);
+        camTmp.copy(camLook).sub(camBase).multiplyScalar(0.14 * e).add(camBase);
+        camTmp.x += Math.sin(sceneP * Math.PI) * 1.8 * (currentSceneIndex % 2 ? 1 : -1);
+        camTmp.y += Math.sin(sceneP * Math.PI) * 0.6;
+        camera.position.copy(camTmp);
+        camera.lookAt(camLook);
+    }
+}
+
+const STEP_MS = 1000 / 60; let stepAcc = 0; let lastFrameTime = performance.now();
+let paused = false;
+function animate() {
+    requestAnimationFrame(animate);
+    const now = performance.now();
+    const frame = Math.min(now - lastFrameTime, 250); lastFrameTime = now;
+    if (paused) { renderer.render(scene, camera); return; }
+
+    const elapsed = Date.now() - sceneStartTime;
+    if (autoPlay) {
+        const sceneDuration = getSceneDurationMs(currentSceneIndex);
+        const holding = narrationHoldsScene();
+        const progress = Math.min((elapsed / sceneDuration) * 100, holding ? 98 : 100);
+        document.getElementById('progress-bar').style.width = `${progress}%`;
+
+        // Move on only when the time is up AND the narrator has finished reading.
+        const safetyCap = elapsed > sceneDuration * 2.5;
+        if (elapsed >= sceneDuration && (!holding || safetyCap) && !transitioning) {
+            nextScene();
+        }
+    } else {
+        document.getElementById('progress-bar').style.width = `0%`;
+    }
+
+    // Fixed 60 steps per second, so speed is the same on every screen.
+    stepAcc += frame;
+    let steps = 0;
+    while (stepAcc >= STEP_MS && steps < 5) { stepScene(); stepAcc -= STEP_MS; steps++; }
+    if (steps === 5) stepAcc = 0;
+
+    placeCamera();
+    renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// TITLE: The Great Wall
+// Episode 2 — Ming China. A new part of the Great Wall keeps falling down, and the rice has gone missing.
+
+// ---------- Episode 2 props ----------
+const WALL_STONE = 0x9a8f7e, WALL_DARK = 0x6f6658;
+// A straight piece of the wall with a walkway and battlements, centred on the origin, running along x.
+function createWallPiece(len = 12, h = 7, w = 5, broken = false) {
+    const g = group(box(len, h, w, WALL_STONE, 0, h / 2, 0), box(len + 0.1, 0.3, w + 0.2, WALL_DARK, 0, h, 0));
+    const r = makeRand(len * 7 + h);
+    for (let i = 0; i < len / 1.5; i++) {
+        const x = -len / 2 + 0.6 + i * 1.5;
+        if (broken && r() < 0.5) continue;
+        g.add(box(0.9, 1.1, 0.5, WALL_STONE, x, h + 0.7, w / 2 - 0.25), box(0.9, 0.7, 0.5, WALL_STONE, x, h + 0.5, -w / 2 + 0.25));
+    }
+    // brick lines on the front face
+    for (let row = 1; row < h; row += 1.2) g.add(box(len + 0.02, 0.06, 0.02, WALL_DARK, 0, row, w / 2 + 0.01));
+    return g;
+}
+function createWatchtower(h = 11) {
+    const g = group(box(7, h, 7, WALL_STONE, 0, h / 2, 0), box(7.2, 0.4, 7.2, WALL_DARK, 0, h, 0));
+    for (let i = 0; i < 4; i++) for (let k = 0; k < 4; k++) { const a = i * Math.PI / 2; const off = -2.6 + k * 1.75; g.add(at(box(0.9, 1.1, 0.5, WALL_STONE, 0, 0, 0), Math.cos(a) * 3.3 - Math.sin(a) * off, h + 0.7, Math.sin(a) * 3.3 + Math.cos(a) * off, a)); }
+    g.add(box(1.6, 2.6, 0.2, 0x2a1d14, 0, 1.3, 3.51), box(1, 1.3, 0.2, 0x2a1d14, -2, h - 3, 3.51), box(1, 1.3, 0.2, 0x2a1d14, 2, h - 3, 3.51));
+    g.add(cyl(0.08, 0.08, 4, 0x4a3020, 2.6, h + 2, 2.6, 6), box(0.05, 1.2, 1.8, mat(0xc8102e, { side: THREE.DoubleSide }), 2.6, h + 3.3, 1.7));
+    return g;
+}
+// The wall winding over the ridge into the distance.
+function createGreatWallVista(seed = 1) {
+    const g = group(); const r = makeRand(seed);
+    const pts = []; for (let i = 0; i <= 26; i++) { const x = -130 + i * 10; pts.push([x, Math.sin(i * 0.55) * 18 - 40 - i * 1.2, 6 + Math.sin(i * 0.9) * 7 + Math.abs(Math.sin(i * 0.35)) * 10]); }
+    for (let i = 0; i < pts.length - 1; i++) {
+        const [x1, z1, y1] = pts[i], [x2, z2, y2] = pts[i + 1];
+        const len = Math.hypot(x2 - x1, z2 - z1);
+        const hill = createMountain((x1 + x2) / 2, (z1 + z2) / 2, Math.max(y1, y2) + 3, 14 + r() * 6, 0x5f7f4a, false, i); hill.children[0].position.y = (Math.max(y1, y2) + 3) / 2 - 3; g.add(hill);
+        const piece = createWallPiece(len + 0.6, 4, 3.4); piece.position.set((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2);
+        piece.rotation.y = -Math.atan2(z2 - z1, x2 - x1); piece.rotation.z = Math.atan2(y2 - y1, len); g.add(piece);
+        if (i % 4 === 0) { const tw = createWatchtower(7); tw.scale.setScalar(0.8); tw.position.set(x1, y1 - 1, z1); g.add(tw); }
+    }
+    for (let i = 0; i < 9; i++) g.add(createMountain(-150 + i * 38, -150 - r() * 40, 40 + r() * 30, 30, 0x6a7f7a, i % 2 === 0, i));
+    return g;
+}
+function createHut(x, z, w = 7, d = 6, h = 4, wall = 0xc9b48a, roof = 0x3a3a3a) {
+    const g = group(box(w, h, d, wall, 0, h / 2, 0), box(1.4, 2.6, 0.1, 0x4a2e1a, 0, 1.3, d / 2 + 0.01));
+    const rf = cone(Math.max(w, d) * 0.85, 2.6, mat(roof, { flatShading: true }), 0, h + 1.3, 0, 4); rf.rotation.y = Math.PI / 4; rf.scale.z = d / w; g.add(rf);
+    g.add(box(w + 1.6, 0.2, d + 1.6, roof, 0, h + 0.1, 0));
+    g.position.set(x, 0, z); return g;
+}
+function createPot(x, z, s = 1, steam = true) {
+    const g = group(cyl(1.4 * s, 1.0 * s, 1.6 * s, 0x2a2a2a, 0, 1.6 * s, 0, 14), cyl(1.25 * s, 1.25 * s, 0.1 * s, 0xf2ead8, 0, 2.35 * s, 0, 14));
+    [0, 1, 2].forEach(i => { const st = box(0.25 * s, 1.0 * s, 0.25 * s, 0x5a5a5a, Math.cos(i * 2.1) * 1.1 * s, 0.5 * s, Math.sin(i * 2.1) * 1.1 * s); g.add(st); });
+    g.add(createFire(0, 0, 0.8 * s));
+    if (steam) { const puffs = []; for (let i = 0; i < 6; i++) { const p = createGlow(0xffffff, 1.4 * s, 0.25); g.add(p); puffs.push(p); } let t = Math.random() * 5; addFx(() => { t += 1 / 60; puffs.forEach((p, i) => { const k = (t * 0.4 + i / 6) % 1; p.position.set(Math.sin(i * 3 + t) * 0.4, 2.6 * s + k * 4 * s, Math.cos(i * 2) * 0.4); p.material.opacity = 0.3 * (1 - k); p.scale.setScalar((1 + k * 2) * s); }); }); }
+    g.position.set(x, 0, z); return g;
+}
+function createCart(x, z, loaded = true) {
+    const g = group(box(4, 0.3, 2.4, 0x7a5232, 0, 1.4, 0), box(4, 0.8, 0.15, 0x6a4424, 0, 1.9, 1.15), box(4, 0.8, 0.15, 0x6a4424, 0, 1.9, -1.15));
+    [-1.4, 1.4].forEach(zz => { const w = cyl(1.0, 1.0, 0.2, 0x4a3020, 0, 1.0, zz, 12); w.rotation.x = Math.PI / 2; g.add(w); });
+    g.add(box(3.5, 0.15, 0.15, 0x5a3a22, 3.6, 1.3, 0.5), box(3.5, 0.15, 0.15, 0x5a3a22, 3.6, 1.3, -0.5));
+    if (loaded) for (let i = 0; i < 5; i++) g.add(at(createSack(0, 0, 0.7), -1.4 + (i % 3) * 1.3, 1.5 + Math.floor(i / 3) * 0.9, (i % 2) * 0.6 - 0.3));
+    g.position.set(x, 0, z); return g;
+}
+// Bricks that tumble down when a wall section fails. Call .fall() to start.
+function createCollapse(x, z, len = 10, h = 6) {
+    const g = group(); const bricks = []; const r = makeRand(x * 3 + z);
+    for (let row = 0; row < 5; row++) for (let i = 0; i < len / 1.4; i++) {
+        const b = box(1.3, 0.65, 1.0, WALL_STONE, -len / 2 + i * 1.4 + (row % 2) * 0.6, h - row * 0.7, 0); g.add(b);
+        bricks.push({ m: b, v: new THREE.Vector3((r() - 0.5) * 0.1, r() * 0.05, 0.05 + r() * 0.12), spin: (r() - 0.5) * 0.2, delay: r() * 50 + row * 6 });
+    }
+    let falling = false, tick = 0;
+    g.fall = () => { falling = true; };
+    addFx(() => {
+        if (!falling) return; tick++;
+        bricks.forEach(b => {
+            if (tick < b.delay) return;
+            if (b.m.position.y > 0.35) { b.v.y -= 0.012; b.m.position.add(b.v); b.m.rotation.x += b.spin; b.m.rotation.z += b.spin * 0.5; }
+            else { b.m.position.y = 0.35; b.v.multiplyScalar(0.8); b.m.position.x += b.v.x; b.m.position.z += b.v.z; }
+        });
+    });
+    g.position.set(x, 0, z); return g;
+}
+function createBrickPile(x, z, n = 18, seed = 3) {
+    const g = group(); const r = makeRand(seed);
+    for (let i = 0; i < n; i++) { const b = box(1.3, 0.65, 1.0, WALL_STONE, (r() - 0.5) * 6, 0.33 + Math.floor(i / 7) * 0.6, (r() - 0.5) * 3); b.rotation.y = r() * 3; b.rotation.z = (r() - 0.5) * 0.4; g.add(b); }
+    g.position.set(x, 0, z); return g;
+}
+function createCave(x, z) {
+    const g = group(); const r = makeRand(31);
+    for (let i = 0; i < 18; i++) { const a = Math.PI * (i / 17); g.add(createRock(Math.cos(a) * 9, Math.sin(a) * 8 + 0.5, (r() - 0.5) * 2, 2.2 + r() * 0.8, 0x6f675c)); }
+    for (let i = 0; i < 10; i++) g.add(createRock((r() - 0.5) * 26, 10 + r() * 3, -3 - r() * 4, 4 + r() * 2, 0x6a6258));
+    g.add(box(16, 11, 2, 0x0e0b09, 0, 5, -8));
+    g.position.set(x, 0, z); return g;
+}
+const worker = (i, o = {}) => createPerson(Object.assign({ shirt: [0x3d5a80, 0x6b705c, 0x8a6a4a, 0x50606b, 0x7a4a3a][i % 5], legs: [0x2b2d42, 0x4a4033, 0x3a3a3a][i % 3], skin: [0xe9c08f, 0xd9a86c, 0xc89664, 0xf0c99a][i % 4], hair: 0x111111, hairStyle: 'short', hat: i % 3 === 2 ? null : 'straw', hatColor: 0xd4b06a, belt: 0x2a1a10, shoes: 0x2a2018 }, o));
+const mei = () => createPerson({ child: true, shirt: 0xd1495b, legs: 0x3a2a4a, skin: 0xf0c99a, hair: 0x111111, hairStyle: 'bun', belt: 0xf2c14e, shoes: 0x2a1a10 });
+const masterLi = () => createPerson({ shirt: 0x1d3557, coat: 0x1d3557, legs: 0x1a1a2a, skin: 0xe9c08f, hair: 0x222222, hat: 'cap', hatColor: 0x111111, beard: 0x444444, belt: 0xc9a240 });
+const grandmaWen = () => createPerson({ shirt: 0x6a4c93, coat: 0x6a4c93, legs: 0x3a2a4a, skin: 0xe0b48a, hair: 0xd8d8d8, hairStyle: 'bun', shoes: 0x2a1a10 });
+const general = () => createPerson({ shirt: 0x8b1e2b, legs: 0x2a2a2a, skin: 0xd9a86c, hat: 'helmet', hatColor: 0xb8902f, beard: 0x222222, belt: 0xc9a240, vest: 0x5a4a3a });
+// Shared ground scene by the building site.
+function siteSet(opts = {}) {
+    const wall = add(createWallPiece(opts.len || 40, 7, 5, false)); wall.position.set(opts.wx || 0, 0, opts.wz || -10);
+    if (opts.tower !== false) add(at(createWatchtower(11), (opts.wx || 0) + 22, 0, opts.wz || -10));
+    add(createMountain(-60, -90, 50, 36, 0x5f7f4a, false, 2)); add(createMountain(50, -110, 60, 40, 0x6a7f7a, true, 4)); add(createMountain(0, -140, 70, 50, 0x6a7f7a, true, 1));
+    for (let i = 0; i < 6; i++) add(createPine(-34 + i * 13, -24 - (i % 2) * 6, 1.4));
+    return { wall };
+}
+
+// ---------- Story ----------
+const storyData = [
+    {
+        title: "1. A Ridge in the Clouds",
+        desc: "The blue light spits Mohamed out onto soft mountain grass. Cold mist curls around him. He sits up, rubs his eyes, and gasps. Across the peaks, as far as he can see, runs a giant stone wall, rising and falling over the mountains like a sleeping dragon.",
+        camPos: [0, 12, 30], camLookAt: [0, 8, -40], skyColor: 0xc7d3dd, mood: 'day', ground: 0x5f7f4a, fog: 0.004,
+        setup: () => {
+            add(createGreatWallVista(2)); add(createClouds(10, 30, 260, 4));
+            const kid = add(at(createKid(), 0, 0, 14, Math.PI));
+            const portal = add(createPortal(3)); portal.position.set(0, 4, 16); portal.setPower(1);
+            return { update: t => { portal.setPower(1 - ease(t, 0.5, 3)); if (t < 3) { kid.inner.position.y = -1.6; pose(kid, { ll: -1.5, rl: -1.5, la: -0.4, ra: -0.4 }); } else { kid.inner.position.y = -1.6 * (1 - ease(t, 3, 4.5)); if (t > 5) shock(kid); else pose(kid, {}); } } };
+        }
+    },
+    {
+        title: "2. The Builders of the Wall",
+        desc: "This is China, more than four hundred years ago. Hundreds of builders are making the wall longer and stronger, to protect the land from raiders in the north. They carry baskets of bricks on poles across their shoulders, and their songs echo off the hills.",
+        camPos: [24, 10, 22], camLookAt: [0, 5, -8], skyColor: 0xc7d3dd, mood: 'day', ground: 0x6b8a52,
+        setup: () => {
+            siteSet();
+            const ws = []; for (let i = 0; i < 7; i++) ws.push(add(at(worker(i), -20 + i * 6, 0, 0 + (i % 2) * 3)));
+            const poles = ws.map(w => { const p = group(box(0.15, 0.15, 4, 0x6a4a2a, 0, 0, 0), at(createCrate(0, 0, 0.45, 0x9a8f7e), 0, -1.4, 1.8), at(createCrate(0, 0, 0.45, 0x9a8f7e), 0, -1.4, -1.8)); p.rotation.y = Math.PI / 2; add(p); return p; });
+            return { update: t => { ws.forEach((w, i) => { const x = -26 + ((t * 1.8 + i * 7) % 52); w.position.x = x; w.rotation.y = Math.PI / 2; walkTo(w, x + 1, w.position.z, 0.03); w.position.x = x; poles[i].position.set(x, 4.1, w.position.z); poles[i].rotation.y = 0; poles[i].children.forEach(c => { }); }); } };
+        }
+    },
+    {
+        title: "3. A Wall That Will Not Stand",
+        desc: "Suddenly there is a terrible crack. A brand new section of the wall shivers, and bricks begin to tumble like falling dominoes. Builders leap out of the way. When the dust clears, the section they finished only yesterday is nothing but a pile of rubble.",
+        camPos: [0, 9, 26], camLookAt: [0, 4, -6], skyColor: 0xc7d3dd, mood: 'day', ground: 0x6b8a52,
+        setup: () => {
+            const left = add(createWallPiece(14, 7, 5)); left.position.set(-14, 0, -8);
+            const right = add(createWallPiece(14, 7, 5)); right.position.set(14, 0, -8);
+            const col = add(createCollapse(0, -6.5, 12, 6.3));
+            const dust = add(createGlow(0xd8cbb0, 0.1, 0.35)); dust.position.set(0, 3, -5);
+            const ws = [[-6, 2], [5, 3], [0, 5]].map(([x, z], i) => add(at(worker(i + 1), x, 0, z, Math.PI)));
+            const kid = add(at(createKid(), 9, 0, 9, Math.PI + 0.4));
+            add(createMountain(0, -120, 60, 40, 0x6a7f7a, true, 1));
+            return { update: t => { if (t > 2.5 && !col.started) { col.started = true; col.fall(); } const d = ease(t, 3, 6) * (1 - ease(t, 9, 14)); dust.scale.setScalar(0.1 + d * 26); dust.material.opacity = 0.35 * d; ws.forEach((w, i) => { if (t > 3) { w.rotation.y = 0; walkTo(w, w.position.x + (i - 1) * 0.5, 9, 0.12); if (w.position.z > 8.5) shock(w); } }); if (t > 3) shock(kid); else idle(kid, t); } };
+        }
+    },
+    {
+        title: "4. A Girl Named Mei",
+        desc: "A girl about Mohamed's age is carrying two buckets of water on a pole. She stares at his red hoodie and white shoes and bursts out laughing. You dress very strangely, she says. I am Mei. You look hungry. And she hands him a warm steamed bun.",
+        camPos: [3, 5.5, 13], camLookAt: [0, 2.6, 0], skyColor: 0xc7d3dd, mood: 'day', ground: 0x6b8a52,
+        setup: () => {
+            siteSet({ wz: -14 });
+            const kid = add(at(createKid(), -2.2, 0, 0, Math.PI / 2));
+            const m = add(at(mei(), 6, 0, 0, -Math.PI / 2));
+            const pole = add(group(box(0.12, 0.12, 4, 0x6a4a2a, 0, 0, 0), cyl(0.5, 0.4, 0.8, 0x7a5a3a, 0, -0.9, 1.8, 10), cyl(0.5, 0.4, 0.8, 0x7a5a3a, 0, -0.9, -1.8, 10)));
+            const bun = add(sph(0.3, 0xf6efe0, 0, 0, 0, 10));
+            return {
+                update: t => {
+                    if (walkTo(m, 2.2, 0, 0.05)) { pole.visible = true; } else { face(m, kid.position.x, kid.position.z); if (t > 7) { pose(m, { ra: -1.3 }); } else pose(m, { la: -0.2, ra: -0.5, nod: Math.sin(t * 8) * 0.06 * (t > 4 ? 1 : 0) }); }
+                    pole.position.set(m.position.x, 3.65, m.position.z); pole.rotation.y = m.rotation.y + Math.PI / 2;
+                    if (t > 6) { pole.position.set(m.position.x + 0.6, 0.9, m.position.z - 1.8); pole.rotation.y = 0; }
+                    const hp = new THREE.Vector3(); m.rig.rightArmGroup.children[1].getWorldPosition(hp); bun.visible = t > 7; bun.position.copy(hp);
+                    if (t > 9) { kid.rig.rightArmGroup.children[1].getWorldPosition(hp); bun.position.copy(hp); pose(kid, { ra: -1.3 }); } else idle(kid, t);
+                    if (t > 11) { pose(kid, { ra: -2.6, raz: -0.3, nod: 0 }); bun.position.y += 0.4; }
+                }
+            };
+        }
+    },
+    {
+        title: "5. Master Li's Worry",
+        desc: "Master Li, the chief builder, paces back and forth in his dark blue robe. Three times this wall has fallen, he says. In three days the general comes to inspect our work. If it falls again, every builder here will be sent home in shame.",
+        camPos: [-4, 6, 15], camLookAt: [0, 3, 0], skyColor: 0xb9c6d0, mood: 'day', ground: 0x6b8a52,
+        setup: () => {
+            siteSet({ wz: -14 }); add(createBrickPile(-4, -6, 22, 5)); add(createBrickPile(5, -7, 16, 7));
+            const li = add(at(masterLi(), -3, 0, 0, Math.PI / 2));
+            const kid = add(at(createKid(), 4, 0, 3, -Math.PI / 2 - 0.4));
+            const m = add(at(mei(), 6, 0, 1, -Math.PI / 2 - 0.2));
+            return { update: t => { const x = Math.sin(t * 0.5) * 3; walkTo(li, x * 1.3, Math.cos(t * 0.5) * 0.4, 0.05); if (t > 10) { face(li, kid.position.x, kid.position.z); pose(li, { la: -0.9, ra: -0.9, laz: 0.5, raz: -0.5 }); } idle(kid, t); kid.rig.head.rotation.y = 0; face(kid, li.position.x, li.position.z, 0.05); idle(m, t, 1); } };
+        }
+    },
+    {
+        title: "6. Brick by Brick",
+        desc: "Mohamed wants to help. He rolls up his sleeves and carries bricks with the builders. They mix lime powder with water to make mortar, spread it between the bricks, and slowly the wall grows again. By sunset the new section stands tall and proud.",
+        camPos: [14, 8, 18], camLookAt: [0, 3.5, -6], skyColor: 0xf2b880, mood: 'golden', ground: 0x6b8a52, sunPos: [-50, 25, 20],
+        setup: () => {
+            siteSet({ wz: -10, len: 50 });
+            const newPart = add(createWallPiece(12, 7, 5)); newPart.position.set(0, -7, -4);
+            const trough = add(box(4, 0.8, 2, 0x6a4a2a, 6, 0.4, 2)); add(box(3.6, 0.1, 1.6, 0xe8e4d8, 6, 0.82, 2));
+            const kid = add(at(createKid(), -6, 0, 3));
+            const ws = [[4, 0.5], [8, 3], [-2, 0.5]].map(([x, z], i) => add(at(worker(i + 2), x, 0, z)));
+            const brick = add(box(1.0, 0.5, 0.8, WALL_STONE));
+            return {
+                update: t => {
+                    newPart.position.y = -7 + Math.min(7, t * 0.45);
+                    const k = (t * 0.25) % 2; const tx = k < 1 ? -1 : -6;
+                    walkTo(kid, tx, k < 1 ? -0.5 : 3, 0.06) || (k < 1 ? work(kid, t) : carry(kid));
+                    if (k >= 1 || kid.position.z > 0.5) carry(kid);
+                    const hp = new THREE.Vector3(); kid.rig.rightArmGroup.children[1].getWorldPosition(hp); brick.position.set(kid.position.x, hp.y, kid.position.z); brick.visible = true;
+                    ws.forEach((w, i) => { w.rotation.y = Math.PI; work(w, t, i * 1.4); });
+                }
+            };
+        }
+    },
+    {
+        title: "7. Rain in the Night",
+        desc: "That night, rain hammers on the builders' tents. Mohamed lies awake, listening. Then, through the storm, comes a deep rumbling sound. He runs outside with a lantern just in time to see the brand new wall slide down into the mud once more.",
+        camPos: [6, 8, 20], camLookAt: [0, 4, -6], skyColor: 0x1b2433, mood: 'night', ground: 0x3e4f3a, fog: 0.012,
+        setup: () => {
+            const left = add(createWallPiece(14, 7, 5)); left.position.set(-14, 0, -8);
+            const right = add(createWallPiece(14, 7, 5)); right.position.set(14, 0, -8);
+            const col = add(createCollapse(0, -6.5, 12, 6.3));
+            add(createRain(1200, 90, 40)); add(createHut(-10, 10, 6, 5, 3.5, 0x9a8a6a, 0x2a2a2a));
+            const kid = add(at(createKid(), -6, 0, 12, Math.PI - 0.3));
+            const lamp = add(createLantern(0, 0, 0, 0xffc36b, 0.6));
+            let flash = 0;
+            return { update: t => { if (t > 5 && !col.started) { col.started = true; col.fall(); } walkTo(kid, -2, 6, 0.08) || shock(kid); const hp = new THREE.Vector3(); kid.rig.rightArmGroup.children[1].getWorldPosition(hp); lamp.position.copy(hp); lamp.position.y -= 0.4; if (t > 4.6 && flash < 1) { flash = 1; flashScreen('#cfe3ff', 600); } } };
+        }
+    },
+    {
+        title: "8. A Morning of Rubble",
+        desc: "In the grey morning, the builders sit among the broken bricks with their heads in their hands. Nobody speaks. Master Li stares at the mud. Mohamed picks up a lump of old mortar, and it crumbles between his fingers like dry sand.",
+        camPos: [10, 6, 14], camLookAt: [0, 2, -2], skyColor: 0xa9b4bd, mood: 'storm', ground: 0x56664a, fog: 0.01,
+        setup: () => {
+            add(createBrickPile(0, -4, 40, 9)); add(createBrickPile(-7, -2, 20, 4));
+            const left = add(createWallPiece(14, 7, 5)); left.position.set(-16, 0, -9);
+            const ws = [[-5, 2], [-2, 3.5], [4, 3], [7, 0.5]].map(([x, z], i) => add(at(worker(i), x, 0, z, Math.PI * 0.9 + i * 0.3)));
+            ws.forEach(w => { w.inner.position.y = -1.0; pose(w, { ll: -1.5, rl: -1.5, la: -1.9, ra: -1.9, nod: 0.5 }); });
+            const li = add(at(masterLi(), 1, 0, -0.5, 0.3));
+            const kid = add(at(createKid(), 3, 0, 5.5, -0.6));
+            const lump = add(box(0.4, 0.3, 0.4, 0xd8d0bf));
+            const crumbs = add(createBurst(0xd8d0bf, 50, 0.04));
+            return { update: t => { pose(li, { nod: 0.45, la: -0.2, ra: -0.2 }); pose(kid, { ra: -1.4, nod: 0.4 }); const hp = new THREE.Vector3(); kid.rig.rightArmGroup.children[1].getWorldPosition(hp); lump.position.copy(hp); lump.position.y += 0.3; if (t > 6 && !lump.done) { lump.done = 1; crumbs.position.copy(lump.position); crumbs.fire(); } lump.scale.setScalar(t > 6 ? Math.max(0.01, 1 - (t - 6)) : 1); } };
+        }
+    },
+    {
+        title: "9. Grandmother's Secret",
+        desc: "Mei sits beside him. My grandmother says the old builders had a secret, she whispers. They cooked rice until it was sticky like glue, and mixed it into the mortar. But we have had no rice for weeks. Mohamed's eyes go wide. He learned about sticky rice mortar in school.",
+        camPos: [0, 4.6, 9], camLookAt: [0, 2.2, 0], skyColor: 0xa9b4bd, mood: 'storm', ground: 0x56664a, fog: 0.01,
+        setup: () => {
+            add(createBrickPile(0, -6, 30, 9));
+            const kid = add(at(createKid(), -1.2, 0, 0, 0.5)); kid.inner.position.y = -0.7;
+            const m = add(at(mei(), 1.2, 0, 0, -0.5)); m.inner.position.y = -0.7;
+            add(box(5, 0.8, 1.2, WALL_STONE, 0, 0.4, -1.2));
+            return { update: t => { pose(kid, { ll: -1.5, rl: -1.5, la: -0.5, ra: -0.5 }); pose(m, { ll: -1.5, rl: -1.5, la: -0.6, ra: t > 3 && t < 10 ? -1.2 + Math.sin(t * 5) * 0.2 : -0.5 }); kid.rig.head.rotation.y = 0.5; m.rig.head.rotation.y = -0.5; if (t > 11) { pose(kid, { ll: -1.5, rl: -1.5, ra: -2.6, raz: 0.2 }); kid.rig.head.rotation.y = 0; } } };
+        }
+    },
+    {
+        title: "10. The Empty Storehouse",
+        desc: "Mei leads him to the village storehouse. The shelves are bare, and the big rice jars are empty. But on the dusty floor something glints. Mohamed picks it up. It is a strange silver coin, the very same kind that the man in the grey coat gave to Gristle on the ship.",
+        camPos: [0, 7, 15], camLookAt: [0, 3, 0], skyColor: 0x2a2018, mood: 'indoor', ground: false,
+        setup: () => {
+            add(createRoom({ w: 22, d: 16, h: 9, wall: 0x9a8562, floor: 0x6a543a, trim: 0x4a3020 }));
+            for (let i = 0; i < 3; i++) add(box(16, 0.3, 2, 0x6a4a2a, 0, 2.5 + i * 2.2, -7));
+            for (let i = 0; i < 5; i++) add(group(cyl(1.0, 0.8, 2.2, 0x8a5a3a, -7 + i * 3.5, 1.1, -4.5, 12), cyl(0.7, 0.7, 0.3, 0x6a3a22, -7 + i * 3.5, 2.3, -4.5, 12)));
+            const beam = add(createGlow(0xfff2c8, 9, 0.18)); beam.position.set(-4, 6, -6);
+            const kid = add(at(createKid(), 3, 0, 4, Math.PI));
+            const m = add(at(mei(), -2, 0, 3, Math.PI * 0.8));
+            const coin = add(cyl(0.3, 0.3, 0.07, mat(0xd8d8e0, { metalness: 0.9, roughness: 0.15 }), 1, 0.08, -0.5, 16));
+            const sparkle = add(createGlow(0xffffff, 0.8, 0.8)); sparkle.position.set(1, 0.2, -0.5);
+            return {
+                update: t => {
+                    sparkle.material.opacity = t < 6 ? 0.4 + Math.abs(Math.sin(t * 4)) * 0.6 : 0; idle(m, t);
+                    if (t < 6) { walkTo(kid, 1.4, 0.8, 0.05) || (kid.inner.position.y = -0.6 * ease(t, 4, 5.5), pose(kid, { ll: -1, ra: -1.4, nod: 0.5 })); }
+                    else { kid.inner.position.y = 0; face(kid, 0, 10); holdUp(kid); const hp = new THREE.Vector3(); kid.rig.rightArmGroup.children[1].getWorldPosition(hp); coin.position.copy(hp); coin.position.y += 0.4; coin.rotation.x = Math.PI / 2; coin.rotation.z = t * 2; }
+                }
+            };
+        }
+    },
+    {
+        title: "11. The Man Who Bought the Rice",
+        desc: "Mei remembers. A tall stranger in a grey coat came to the village a month ago, she says. He paid with shining silver and bought every sack of rice we had. He loaded them onto a cart and drove up the mountain path in the dark. Nobody ever saw him come down.",
+        camPos: [12, 8, 18], camLookAt: [0, 3, -2], skyColor: 0x4a3f5f, mood: 'dusk', ground: 0x4f5f42, sunPos: [-40, 12, -20],
+        setup: () => {
+            add(createHut(-10, -8, 7, 6, 4, 0xb8a47a, 0x2a2a2a)); add(createHut(2, -12, 8, 6, 4, 0xb8a47a, 0x2a2a2a)); add(createHut(14, -6, 6, 5, 3.6, 0xb8a47a, 0x2a2a2a));
+            add(createMountain(-30, -60, 40, 30, 0x4f5f52, false, 3));
+            const cart = add(createCart(0, 0)); cart.rotation.y = 0.3;
+            const col = add(at(createCollector(), -3, 0, 2.5, 0.3));
+            const sack = add(createSack(0, 0, 0.7));
+            add(createLantern(-6, 4, -4.5, 0xffc36b, 0.8));
+            return {
+                update: t => {
+                    if (t < 6) { carry(col); const hp = new THREE.Vector3(); col.rig.rightArmGroup.children[1].getWorldPosition(hp); sack.position.set(hp.x - 0.6, hp.y - 0.7, hp.z + 0.6); }
+                    else { sack.position.set(-0.2, 2.6, 0.3); col.rotation.y = lerpAngle(col.rotation.y, 0.3 + Math.PI / 2, 0.05); pose(col, {}); }
+                    if (t > 9) { const k = (t - 9) * 0.08; cart.position.x = k * 10; cart.position.z = -k * 6; sack.position.x = cart.position.x - 0.2; sack.position.z = cart.position.z + 0.3; walkTo(col, cart.position.x + 3, cart.position.z, 0.09); }
+                    col.watch.pulse();
+                }
+            };
+        }
+    },
+    {
+        title: "12. Up the Mountain Path",
+        desc: "Mohamed and Mei follow the old cart tracks up the mountain. The path winds between pine trees and grey boulders. The higher they climb, the more Mohamed's watch flickers, as if it can feel that something here does not belong.",
+        camPos: [10, 9, 18], camLookAt: [0, 4, -4], skyColor: 0xb9c6d0, mood: 'day', ground: 0x5a7046, fog: 0.012,
+        setup: () => {
+            const r = makeRand(4);
+            for (let i = 0; i < 20; i++) add(createPine((r() - 0.5) * 60, -r() * 40 + (r() < 0.5 ? 6 : -4) - 6, 1 + r() * 0.8));
+            for (let i = 0; i < 8; i++) add(createRock((r() - 0.5) * 40, 0.8, (r() - 0.5) * 20, 1 + r() * 1.5));
+            for (let i = 0; i < 18; i++) { add(box(0.4, 0.05, 1.2, 0x3e3426, -14 + i * 1.6, 0.04, -1 + Math.sin(i * 0.3) * 2 + 0.9)); add(box(0.4, 0.05, 1.2, 0x3e3426, -14 + i * 1.6, 0.04, -1 + Math.sin(i * 0.3) * 2 - 0.9)); }
+            const kid = add(at(createKid(), -12, 0, 1));
+            const m = add(at(mei(), -14.5, 0, 0));
+            return { update: t => { walkTo(kid, 14, -2, 0.05); walkTo(m, 11.5, -3, 0.05); kid.watch.setPower(1 + Math.abs(Math.sin(t * 6)) * 2); if (t > 9) { kid.rig.head.rotation.x = 0.4; } } };
+        }
+    },
+    {
+        title: "13. The Hidden Cave",
+        desc: "Behind a curtain of hanging vines they find the mouth of a cave. Inside, faint purple light flickers on the walls. And stacked right to the roof are sacks and sacks of rice. The Collector hid it all, so the wall would never stand.",
+        camPos: [0, 6, 18], camLookAt: [0, 4, -3], skyColor: 0x9aa8b2, mood: 'day', ground: 0x5a6a46,
+        setup: () => {
+            add(createCave(0, -6));
+            for (let i = 0; i < 16; i++) add(at(createSack(0, 0, 0.9, 0xd8c79a), -4 + (i % 5) * 2, Math.floor(i / 5) * 1.3, -10 - (i % 2)));
+            const purple = add(createGlow(0xa04cff, 10, 0.35)); purple.position.set(0, 4, -9);
+            for (let i = 0; i < 6; i++) add(createRope([-6 + i * 0.8, 9.5, -6], [-6 + i * 0.8 + Math.sin(i) * 0.3, 5 + (i % 3), -6], 0x3f6b35, 0.08));
+            const kid = add(at(createKid(), 2, 0, 8, Math.PI));
+            const m = add(at(mei(), -2, 0, 8.5, Math.PI));
+            return { update: t => { purple.material.opacity = 0.25 + Math.sin(t * 2) * 0.1; walkTo(kid, 1.4, 1.5, 0.04) || shock(kid); walkTo(m, -1.4, 2, 0.04) || shock(m); } };
+        }
+    },
+    {
+        title: "14. A Line of Helpers",
+        desc: "Mei runs down to the village shouting the news. Soon every builder and every neighbour is climbing the path. They form a long line, passing the heavy rice sacks from hand to hand, all the way down the mountain. Even Master Li carries a sack on his back.",
+        camPos: [18, 10, 20], camLookAt: [0, 3, -2], skyColor: 0xc7d3dd, mood: 'day', ground: 0x5a7046,
+        setup: () => {
+            const r = makeRand(8); for (let i = 0; i < 12; i++) add(createPine(-30 + r() * 60, -14 - r() * 20, 1.2));
+            add(createCave(-22, -16));
+            const line = []; for (let i = 0; i < 9; i++) { const w = add(at(i === 4 ? masterLi() : (i === 7 ? mei() : worker(i)), -16 + i * 4, 0, -6 + i * 1.6, Math.PI / 2)); line.push(w); }
+            const kid = add(at(createKid(), 18, 0, 8.4, -Math.PI / 2));
+            const sacks = line.map(() => add(createSack(0, 0, 0.6)));
+            return {
+                update: t => {
+                    line.forEach((w, i) => { const s = Math.sin(t * 2.5 + i * 0.7); pose(w, { la: -1.2, ra: -1.2, laz: s * 0.4, raz: s * 0.4 }); w.rotation.y = Math.PI / 2 + 0.4 - s * 0.6; const hp = new THREE.Vector3(); w.rig.rightArmGroup.children[1].getWorldPosition(hp); sacks[i].position.set(hp.x, hp.y - 0.9, hp.z); });
+                    work(kid, t);
+                }
+            };
+        }
+    },
+    {
+        title: "15. The Sticky Rice Soup",
+        desc: "Mei's grandmother takes charge. Giant iron pots bubble over crackling fires. The rice is boiled for hours, stirred and stirred, until it turns into a thick, sticky soup. It smells wonderful, says Mohamed. It is not for eating today, Grandmother Wen laughs. Today the wall eats first.",
+        camPos: [8, 7, 15], camLookAt: [0, 2.5, 0], skyColor: 0xd9c8a8, mood: 'golden', ground: 0x6b8a52, sunPos: [-40, 30, 30],
+        setup: () => {
+            siteSet({ wz: -16 });
+            const pots = [[-6, -2], [0, -2], [6, -2]].map(([x, z]) => add(createPot(x, z, 1)));
+            const gw = add(at(grandmaWen(), 0, 0, 1.6, Math.PI));
+            const paddle = add(group(box(0.15, 4, 0.15, 0x6a4a2a, 0, 0, 0))); paddle.position.set(0, 2.6, -1.4);
+            const kid = add(at(createKid(), 3.2, 0, 3, -2.5));
+            const m = add(at(mei(), -3.2, 0, 3, 2.5));
+            const ws = [[-6, 1.2], [6, 1.2]].map(([x, z], i) => add(at(worker(i), x, 0, z, Math.PI)));
+            return { update: t => { pose(gw, { la: -1.6 + Math.sin(t * 2) * 0.2, ra: -1.6 - Math.sin(t * 2) * 0.2 }); paddle.rotation.z = Math.sin(t * 2) * 0.35; paddle.rotation.x = Math.cos(t * 2) * 0.3; ws.forEach((w, i) => work(w, t, i)); idle(kid, t); idle(m, t, 1); if (t > 9) { gw.rig.head.rotation.y = 0.6; } } };
+        }
+    },
+    {
+        title: "16. Mixing the Mortar",
+        desc: "The builders pour the rice soup into troughs of lime and stir with long paddles. The grey powder turns smooth and creamy. Mohamed squeezes a handful. It does not crumble at all. It sticks like glue. This is it, he grins. This is the secret.",
+        camPos: [0, 7, 13], camLookAt: [0, 1.5, 0], skyColor: 0xd9c8a8, mood: 'golden', ground: 0x6b8a52, sunPos: [-40, 30, 30],
+        setup: () => {
+            siteSet({ wz: -16 });
+            const tr = add(group(box(8, 1, 3, 0x6a4a2a, 0, 0.5, 0), box(7.6, 0.1, 2.6, 0xe8e4d8, 0, 1.0, 0)));
+            const mix = tr.children[1]; mix.material = new THREE.MeshStandardMaterial({ color: 0xbdb6a6 });
+            const ws = [[-2.5, -2.2], [2.5, -2.2]].map(([x, z], i) => add(at(worker(i + 3), x, 0, z, 0)));
+            const paddles = ws.map(() => add(box(0.15, 4, 0.15, 0x6a4a2a)));
+            const kid = add(at(createKid(), 0, 0, 2.6, Math.PI));
+            const bucket = add(cyl(0.5, 0.4, 0.8, 0x2a2a2a, 0, 0, 0, 10));
+            return {
+                update: t => {
+                    mix.material.color.lerpColors(new THREE.Color(0xbdb6a6), new THREE.Color(0xf2ece0), ease(t, 2, 10));
+                    ws.forEach((w, i) => { work(w, t, i * 2); const hp = new THREE.Vector3(); w.rig.rightArmGroup.children[1].getWorldPosition(hp); paddles[i].position.set(hp.x, 1.8, hp.z + 0.8); paddles[i].rotation.x = Math.sin(t * 5 + i * 2) * 0.4; });
+                    if (t < 4) { pose(kid, { la: -1.4, ra: -1.4, laz: 0.3, raz: -0.3 }); const hp = new THREE.Vector3(); kid.rig.rightArmGroup.children[1].getWorldPosition(hp); bucket.position.set(hp.x - 0.6, hp.y, hp.z - 0.4); bucket.rotation.x = -ease(t, 1, 3) * 1.2; }
+                    else { bucket.position.set(1.6, 0.4, 2.2); bucket.rotation.x = 0; if (t > 8) cheer(kid, t); else pose(kid, { ra: -1.3, nod: 0.4 }); }
+                }
+            };
+        }
+    },
+    {
+        title: "17. Building It Right",
+        desc: "For two days and two nights the builders work without rest. Every brick is laid in the new sticky mortar. Mohamed carries water, Mei carries bricks, and Master Li checks every row himself. On the second evening, the new section stands, solid as the mountain.",
+        camPos: [16, 9, 20], camLookAt: [0, 4, -6], skyColor: 0xf2b880, mood: 'golden', ground: 0x6b8a52, sunPos: [-50, 20, 10],
+        setup: () => {
+            siteSet({ wz: -8, len: 54 });
+            const ws = []; for (let i = 0; i < 5; i++) ws.push(add(at(worker(i), -10 + i * 5, 7.15, -8, 0)));
+            const li = add(at(masterLi(), 4, 0, 1, Math.PI));
+            const kid = add(at(createKid(), -6, 0, 3));
+            const m = add(at(mei(), 8, 0, 4));
+            const scaff = add(group()); for (let i = 0; i < 6; i++) scaff.add(box(0.2, 8, 0.2, 0x7a5a3a, -12 + i * 5, 4, -4.8)); scaff.add(box(28, 0.2, 0.2, 0x7a5a3a, 0, 6, -4.8), box(28, 0.2, 0.2, 0x7a5a3a, 0, 3, -4.8));
+            return { update: t => { ws.forEach((w, i) => work(w, t, i)); pose(li, { la: -0.4, ra: -1.2, nod: -0.2 }); li.rig.head.rotation.y = Math.sin(t * 0.6) * 0.8; walkTo(kid, -6 + Math.sin(t * 0.4) * 6, 3, 0.05); walkTo(m, 8 - Math.sin(t * 0.4) * 5, 4, 0.05); } };
+        }
+    },
+    {
+        title: "18. The Storm Test",
+        desc: "On the last night before the general comes, a fierce storm rolls over the mountains. Thunder booms, lightning cracks, and rain pours down the stones in rivers. Everyone holds their breath. Mohamed watches the new wall all night long. It does not move, not even one brick.",
+        camPos: [10, 8, 22], camLookAt: [0, 5, -8], skyColor: 0x141c28, mood: 'night', ground: 0x3e4f3a, fog: 0.01,
+        setup: () => {
+            siteSet({ wz: -10, tower: true });
+            add(createRain(1400, 100, 40)); add(createClouds(8, 30, 200, 6, 0x2a3240));
+            const kid = add(at(createKid(), -2, 0, 6, Math.PI)); const m = add(at(mei(), 1, 0, 6.5, Math.PI));
+            const lamp = add(createLantern(-0.5, 3.4, 6.4, 0xffc36b, 0.6));
+            const bolt = add(box(0.3, 40, 0.3, glowMat(0xdfefff), 18, 20, -60)); bolt.visible = false;
+            return { update: t => { const f = (t % 5) > 4.7; bolt.visible = f; if (f && !bolt.on) { flashScreen('#dfefff', 500); } bolt.on = f; sun.intensity = f ? 2.5 : 0.45; idle(kid, t); pose(m, { la: -1.0, laz: 0.6, ra: -0.2 }); } };
+        }
+    },
+    {
+        title: "19. The General's Visit",
+        desc: "In the bright morning the general rides up the valley with his soldiers. He climbs the new wall, pushes a stone, and stamps his boot. It does not shift. The general smiles and begins to clap. Master Li places his hand on his heart, and the builders cheer.",
+        camPos: [6, 9, 22], camLookAt: [0, 4, -4], skyColor: 0xbcd7ea, mood: 'bright', ground: 0x6b8a52,
+        setup: () => {
+            siteSet({ wz: -10 });
+            const gen = add(at(general(), 0, 7.15, -9, 0));
+            const horse = add(at(createHorse(0xf2efe6, 0x8a8a8a), -6, 0, 0, Math.PI / 2));
+            const soldiers = [[-10, 2], [-12, -1], [8, 2]].map(([x, z]) => add(at(createPerson({ shirt: 0x8b1e2b, legs: 0x2a2a2a, skin: 0xd9a86c, hat: 'helmet', hatColor: 0x777777, belt: 0x2a1a10 }), x, 0, z, 0.2)));
+            const li = add(at(masterLi(), 3, 0, 1, Math.PI));
+            const kid = add(at(createKid(), 6, 0, 3.5, Math.PI)); const m = add(at(mei(), 8, 0, 4, Math.PI));
+            const ws = [[-3, 4], [0, 5], [11, 4]].map(([x, z], i) => add(at(worker(i), x, 0, z, Math.PI)));
+            return {
+                update: t => {
+                    if (t < 5) { pose(gen, { ll: Math.sin(t * 6) * 0.6 * (t < 2 ? 0 : 0), ra: -0.3 }); gen.rotation.y = 0; }
+                    else if (t < 8) { gen.rig.rightLegGroup.rotation.x = -Math.abs(Math.sin(t * 4)) * 0.8; }
+                    else { gen.rotation.y = lerpAngle(gen.rotation.y, 0, 0.1); clap(gen, t); }
+                    if (t > 9) heart(li); else idle(li, t);
+                    [kid, m, ...ws].forEach((a, i) => t > 10 ? cheer(a, t, i) : idle(a, t, i));
+                    soldiers.forEach((s, i) => t > 10 ? clap(s, t, i) : idle(s, t, i));
+                }
+            };
+        }
+    },
+    {
+        title: "20. The Second Gem",
+        desc: "As the cheering echoes off the mountains, the watch grows warm once more. An orange gem, bright as a lantern, appears beside the red one. Two gems, Mohamed whispers. Two fixes. Mei leans in to look and her mouth falls open.",
+        camPos: [0, 4.6, 7.5], camLookAt: [0, 3, 0], skyColor: 0xbcd7ea, mood: 'bright', ground: 0x6b8a52, gems: 2, gemMoment: true,
+        setup: () => {
+            siteSet({ wz: -14 });
+            const kid = add(at(createKid(), -0.7, 0, 0, 0.25)); const m = add(at(mei(), 1.6, 0, 0.2, -0.6));
+            let lit = false;
+            return { update: t => { if (t > 3 && !lit) { lit = true; lightGem(kid, 2); } if (t > 3) { pose(kid, { la: -1.1, laz: 0.4, nod: 0.3 }); shock(m); } else { idle(kid, t); idle(m, t, 1); } } };
+        }
+    },
+    {
+        title: "21. The Collector's Frown",
+        desc: "High on a distant watchtower, a figure in a long grey coat lowers his spyglass and frowns. Two gems, he says coldly. The boy learns quickly. But I am patient. His dark watch glows, and he steps backwards into a swirl of purple light.",
+        camPos: [10, 15, 20], camLookAt: [0, 11, 0], skyColor: 0xbcd7ea, mood: 'day', ground: 0x6b8a52,
+        setup: () => {
+            add(createWatchtower(11)); add(at(createGreatWallVista(5), 0, -2, -40));
+            const col = add(at(createCollector(), 0, 11.2, 1.5, 0.6));
+            const portal = add(createPortal(3, [0x7a2bd6, 0xb05cff, 0x3a0a6a, 0xe0b0ff])); portal.position.set(-1, 14.5, -2); portal.rotation.y = 0.6; portal.setPower(0);
+            return { update: t => { if (t < 5) pose(col, { ra: -2.4, raz: -0.4 }); else pose(col, { la: -0.3, laz: 0.3 }); col.watch.pulse(); portal.setPower(ease(t, 8, 10)); if (t > 10) { col.position.x -= 0.02; col.position.z -= 0.04; col.visible = t < 12.5; } } };
+        }
+    },
+    {
+        title: "22. A Gift From Mei",
+        desc: "The watch begins to tick faster. Mohamed knows what that means. Mei presses a little cloth bundle into his hands: rice buns, for the journey. Don't forget us, she says. Never, he promises. Through the opening ring of light he sees castle towers and fluttering banners.",
+        camPos: [2, 5, 13], camLookAt: [0, 3, 0], skyColor: 0xf2b880, mood: 'golden', ground: 0x6b8a52, sunPos: [-40, 20, 20],
+        setup: () => {
+            siteSet({ wz: -14 });
+            const kid = add(at(createKid(), 0, 0, 0, Math.PI / 2)); const m = add(at(mei(), 2.2, 0, 0, -Math.PI / 2));
+            const bundle = add(box(0.6, 0.5, 0.6, 0xd1495b));
+            const portal = add(createPortal(3.2)); portal.position.set(-4, 3.6, 0); portal.rotation.y = Math.PI / 2; portal.setPower(0);
+            const towers = add(group(box(0.6, 1.6, 0.1, glowMat(0x8a8a9a), -0.9, 0, 0), box(0.6, 2.2, 0.1, glowMat(0x8a8a9a), 0.3, 0.3, 0), box(0.4, 0.7, 0.1, glowMat(0xc8102e), 0.3, 1.8, 0))); towers.position.set(-4.2, 3, 0); towers.rotation.y = Math.PI / 2; towers.visible = false;
+            return {
+                update: t => {
+                    kid.watch.setPower(1 + ease(t, 1, 8) * 10); kid.watch.pulse();
+                    const hp = new THREE.Vector3();
+                    if (t < 5) { pose(m, { ra: -1.3, la: -1.3 }); m.rig.rightArmGroup.children[1].getWorldPosition(hp); idle(kid, t); }
+                    else { pose(kid, { ra: -1.3 }); kid.rig.rightArmGroup.children[1].getWorldPosition(hp); if (t > 7) wave(m, t); else heart(m); }
+                    bundle.position.copy(hp);
+                    portal.setPower(ease(t, 6, 9)); towers.visible = t > 8 && t < 11;
+                    if (t > 9) walkTo(kid, -3.6, 0, 0.05);
+                    if (t > 10.5) { kid.scale.setScalar(Math.max(0.01, 1 - (t - 10.5) * 0.8)); bundle.visible = false; }
+                }
+            };
+        }
+    }
+];
+
+window.TRAILER = {
+    open: "Across the mountains of China...",
+    shots: [
+        [1, 6, 3.6, "A wall like a sleeping dragon."],
+        [3, 4, 3.4, "But it will not stand."],
+        [4, 4, 3.2, "A new friend."],
+        [7, 6, 3.4, "Something is missing."],
+        [10, 7, 3.8, "And someone wants it that way."]
+    ]
+};
+
+    </script>
+    <script>
+// Episode wrapper: "Play episode" screen, title card, then the scenes, then credits.
+(function () {
+    const E = window.SHOW_INFO;
+    autoPlay = false; narratorEnabled = false; if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    const ui = document.getElementById('story-ui'); if (ui) ui.style.visibility = 'hidden';
+    const hud = document.getElementById('gem-hud'); if (hud) hud.style.visibility = 'hidden';
+    const css = document.createElement('style');
+    css.textContent = `
+      #ep-start,#ep-card,#ep-credits{position:fixed;inset:0;z-index:40;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#f3eee4;font-family:Georgia,serif}
+      #ep-start{background:radial-gradient(ellipse at 50% 120%,#123a52 0%,#000 65%);cursor:pointer;gap:2.6vh}
+      #ep-start .series{color:#e8b54a;font-size:clamp(14px,1.8vw,22px);letter-spacing:.35em;text-transform:uppercase}
+      #ep-start .name{font-size:clamp(28px,5vw,64px);font-weight:700;padding:0 5vw}
+      #ep-start .play{margin-top:2vh;background:#e8b54a;color:#1a1408;font:800 clamp(16px,2vw,24px) Arial,sans-serif;padding:1.4vh 3.2vw;border-radius:999px;border:0;cursor:pointer;text-transform:none}
+      #ep-card{opacity:0;transition:opacity .9s;pointer-events:none;gap:2vh}
+      #ep-card .num{color:#e8b54a;font-size:clamp(18px,2.6vw,34px);letter-spacing:.4em}
+      #ep-card .title{font-size:clamp(36px,7vw,96px);font-weight:700;line-height:1.05;padding:0 6vw}
+      #ep-card .rule{width:min(320px,40vw);height:1px;background:#4fc3ff;opacity:.7}
+      #ep-credits{display:none;overflow:hidden;justify-content:flex-start}
+      #ep-roll{position:absolute;left:0;right:0;top:100%;display:flex;flex-direction:column;align-items:center;gap:5vh;padding-bottom:10vh}
+      #ep-roll .head{color:#e8b54a;font-size:clamp(28px,5vw,60px);font-weight:700;letter-spacing:.08em}
+      #ep-roll .sub{font-size:clamp(16px,2.2vw,28px);opacity:.85}
+      #ep-roll .role{font:600 clamp(12px,1.5vw,18px) Arial,sans-serif;letter-spacing:.3em;color:#bfb6a4;text-transform:uppercase}
+      #ep-roll .who{font-size:clamp(22px,3vw,40px);margin-top:.6vh}
+      #ep-thanks{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4vh;opacity:0;transition:opacity 1.6s}
+      #ep-thanks .t{color:#e8b54a;font-size:clamp(34px,6.5vw,90px);font-weight:700}
+      #ep-thanks .btns{display:flex;gap:2vw;opacity:0;transition:opacity 1s;flex-wrap:wrap;justify-content:center}
+      #ep-thanks button{background:transparent;color:#f3eee4;border:1px solid #e8b54a;font:700 clamp(14px,1.6vw,20px) Arial,sans-serif;padding:1.2vh 2.4vw;border-radius:999px;cursor:pointer;text-transform:none}
+      #ep-thanks button.primary{background:#e8b54a;color:#1a1408}`;
+    document.head.appendChild(css);
+    const div = (id, html) => { const d = document.createElement('div'); d.id = id; d.innerHTML = html; document.body.appendChild(d); return d; };
+    const start = div('ep-start', `<div class="series">${E.series}</div><div class="name">Episode ${E.num}: ${E.title}</div><button class="play">▶ Play episode</button>`);
+    const card = div('ep-card', `<div class="num">EPISODE ${E.num}</div><div class="rule"></div><div class="title">${E.title}</div>`);
+    const credits = div('ep-credits', `<div id="ep-roll"></div><div id="ep-thanks"><div class="t">Thanks For Watching</div><div class="btns"><button class="primary" id="ep-again">↻ Watch again</button><button id="ep-back">Back to MoFlex</button></div></div>`);
+    const roles = [['Created by', 'Mohamed'], ['Directed by', 'Mohamed'], ['Written by', 'Mohamed'], ['Story by', 'Mohamed'], ['Produced by', 'Mohamed'], ['Animation by', 'Mohamed'], ['Characters designed by', 'Mohamed'], ['Edited by', 'Mohamed'], ['Narration script by', 'Mohamed'], ['Made by', 'Mohamed']];
+    document.getElementById('ep-roll').innerHTML = `<div class="head">${E.series}</div><div class="sub">Episode ${E.num}: ${E.title}</div>` + roles.map(([r, w]) => `<div><div class="role">${r}</div><div class="who">${w}</div></div>`).join('') + `<div class="sub" style="margin-top:4vh">A MoFlex original</div>`;
+    function say(text) { if (!('speechSynthesis' in window)) return; window.speechSynthesis.cancel(); try { loadNarratorVoice(); } catch (e) { } const u = new SpeechSynthesisUtterance(text); if (narratorVoice) u.voice = narratorVoice; u.rate = 0.9; u.pitch = 0.9; window.speechSynthesis.speak(u); }
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    let rolling = false;
+    async function begin() {
+        start.style.display = 'none'; credits.style.display = 'none'; rolling = false;
+        card.style.opacity = '1'; await wait(900); say(`Episode ${E.num}. ${E.title}.`); await wait(4200); card.style.opacity = '0';
+        fadeEl.style.opacity = '1'; loadScene(0, false); if (ui) ui.style.visibility = 'visible'; if (hud) hud.style.visibility = 'visible';
+        narratorEnabled = true; autoPlay = true; document.getElementById('narrator-btn').innerText = 'Narrator: ON'; document.getElementById('autoplay-btn').innerText = 'Autoplay: ON';
+        narratorUnlocked = true; speakScene(storyData[0]); sceneStartTime = Date.now(); setTimeout(() => fadeEl.style.opacity = '0', 200);
+    }
+    async function rollCredits() {
+        if (rolling) return; rolling = true; autoPlay = false; narratorEnabled = false; if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        fadeEl.style.opacity = '1'; await wait(700); if (ui) ui.style.visibility = 'hidden'; if (hud) hud.style.visibility = 'hidden';
+        credits.style.display = 'flex'; const roll = document.getElementById('ep-roll'); const thanks = document.getElementById('ep-thanks'); thanks.style.opacity = '0'; thanks.querySelector('.btns').style.opacity = '0';
+        roll.style.transition = 'none'; roll.style.transform = 'translateY(0)'; void roll.offsetHeight;
+        const dist = roll.scrollHeight + window.innerHeight; const secs = Math.max(22, dist / 60);
+        roll.style.transition = `transform ${secs}s linear`; roll.style.transform = `translateY(-${dist}px)`;
+        await wait(secs * 1000); thanks.style.opacity = '1'; say('Thanks for watching.'); await wait(1800); thanks.querySelector('.btns').style.opacity = '1';
+    }
+    const baseNext = nextScene;
+    nextScene = function () { if (rolling) return; if (currentSceneIndex >= storyData.length - 1) rollCredits(); else baseNext(); };
+    window.rollCredits = rollCredits;
+    start.addEventListener('click', begin);
+    document.getElementById('ep-again').addEventListener('click', () => { credits.style.display = 'none'; fadeEl.style.opacity = '1'; begin(); });
+    document.getElementById('ep-back').addEventListener('click', () => { if (window.parent !== window) window.parent.postMessage('moflex-back', '*'); else history.back(); });
+
+    loadScene(0, false);
+    animate();
+})();
+
+    </script>
+</body>
+</html>
