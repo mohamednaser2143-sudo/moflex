@@ -38,26 +38,6 @@ function createGreatWallVista(seed = 1) {
     for (let i = 0; i < 9; i++) g.add(createMountain(-150 + i * 38, -150 - r() * 40, 40 + r() * 30, 30, 0x6a7f7a, i % 2 === 0, i));
     return g;
 }
-function createHut(x, z, w = 7, d = 6, h = 4, wall = 0xc9b48a, roof = 0x3a3a3a) {
-    const g = group(box(w, h, d, wall, 0, h / 2, 0), box(1.4, 2.6, 0.1, 0x4a2e1a, 0, 1.3, d / 2 + 0.01));
-    const rf = cone(Math.max(w, d) * 0.85, 2.6, mat(roof, { flatShading: true }), 0, h + 1.3, 0, 4); rf.rotation.y = Math.PI / 4; rf.scale.z = d / w; g.add(rf);
-    g.add(box(w + 1.6, 0.2, d + 1.6, roof, 0, h + 0.1, 0));
-    g.position.set(x, 0, z); return g;
-}
-function createPot(x, z, s = 1, steam = true) {
-    const g = group(cyl(1.4 * s, 1.0 * s, 1.6 * s, 0x2a2a2a, 0, 1.6 * s, 0, 14), cyl(1.25 * s, 1.25 * s, 0.1 * s, 0xf2ead8, 0, 2.35 * s, 0, 14));
-    [0, 1, 2].forEach(i => { const st = box(0.25 * s, 1.0 * s, 0.25 * s, 0x5a5a5a, Math.cos(i * 2.1) * 1.1 * s, 0.5 * s, Math.sin(i * 2.1) * 1.1 * s); g.add(st); });
-    g.add(createFire(0, 0, 0.8 * s));
-    if (steam) { const puffs = []; for (let i = 0; i < 6; i++) { const p = createGlow(0xffffff, 1.4 * s, 0.25); g.add(p); puffs.push(p); } let t = Math.random() * 5; addFx(() => { t += 1 / 60; puffs.forEach((p, i) => { const k = (t * 0.4 + i / 6) % 1; p.position.set(Math.sin(i * 3 + t) * 0.4, 2.6 * s + k * 4 * s, Math.cos(i * 2) * 0.4); p.material.opacity = 0.3 * (1 - k); p.scale.setScalar((1 + k * 2) * s); }); }); }
-    g.position.set(x, 0, z); return g;
-}
-function createCart(x, z, loaded = true) {
-    const g = group(box(4, 0.3, 2.4, 0x7a5232, 0, 1.4, 0), box(4, 0.8, 0.15, 0x6a4424, 0, 1.9, 1.15), box(4, 0.8, 0.15, 0x6a4424, 0, 1.9, -1.15));
-    [-1.4, 1.4].forEach(zz => { const w = cyl(1.0, 1.0, 0.2, 0x4a3020, 0, 1.0, zz, 12); w.rotation.x = Math.PI / 2; g.add(w); });
-    g.add(box(3.5, 0.15, 0.15, 0x5a3a22, 3.6, 1.3, 0.5), box(3.5, 0.15, 0.15, 0x5a3a22, 3.6, 1.3, -0.5));
-    if (loaded) for (let i = 0; i < 5; i++) g.add(at(createSack(0, 0, 0.7), -1.4 + (i % 3) * 1.3, 1.5 + Math.floor(i / 3) * 0.9, (i % 2) * 0.6 - 0.3));
-    g.position.set(x, 0, z); return g;
-}
 // Bricks that tumble down when a wall section fails. Call .fall() to start.
 function createCollapse(x, z, len = 10, h = 6) {
     const g = group(); const bricks = []; const r = makeRand(x * 3 + z);
