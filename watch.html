@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MoFlex</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;color:#f3eee4;font-family:Karla,system-ui,sans-serif;overflow:hidden}
+  iframe{position:fixed;inset:0;width:100%;height:100%;border:0}
+  #back{position:fixed;top:calc(14px + env(safe-area-inset-top));left:14px;z-index:5;background:rgba(20,18,42,.75);color:#f3eee4;border:1px solid rgba(232,181,74,.5);border-radius:999px;padding:9px 16px;font-weight:700;cursor:pointer;transition:opacity .4s}
+  #back.hide{opacity:0}
+  #msg{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;text-align:center;padding:24px;background:#14122a}
+  #msg a{color:#14122a;background:#e8b54a;padding:10px 20px;border-radius:999px;font-weight:700;text-decoration:none}
+</style>
+</head>
+<body>
+<button id="back">← Back</button>
+<div id="msg"><div id="msgText"></div><a href="index.html">Go to MoFlex</a></div>
+<script>
+  const p = new URLSearchParams(location.search); const type = p.get('type') === 'trailer' ? 'trailer' : 'episode'; const n = parseInt(p.get('n'), 10);
+  const back = document.getElementById('back');
+  const goBack = () => { location.href = 'index.html#/' + (type === 'trailer' ? 'trailers' : 'shows') + '/tales-of-the-legend'; };
+  back.onclick = goBack; window.addEventListener('message', e => { if (e.data === 'moflex-back') goBack(); });
+  let hideT; const poke = () => { back.classList.remove('hide'); clearTimeout(hideT); hideT = setTimeout(() => back.classList.add('hide'), 2500); }; ['mousemove', 'touchstart', 'keydown'].forEach(ev => window.addEventListener(ev, poke)); poke();
+  function blocked(text) { document.getElementById('msgText').textContent = text; document.getElementById('msg').style.display = 'flex'; }
+  fetch('availability.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.json()).then(a => {
+    const list = (type === 'trailer' ? a.trailers : a.episodes || []).map(Number);
+    if (!n || !list.includes(n)) return blocked(type === 'trailer' ? 'This trailer is not released yet.' : 'This episode is not released yet.');
+    const f = document.createElement('iframe'); f.src = (type === 'trailer' ? 'trailers/trailer-' : 'episodes/episode-') + n + '.html'; f.allow = 'autoplay; fullscreen'; f.allowFullscreen = true; f.title = 'Player'; document.body.prepend(f);
+    f.addEventListener('load', () => { try { f.contentWindow.document.addEventListener('mousemove', poke); } catch (e) { } });
+  }).catch(() => blocked('Could not load this video. Check your connection and try again.'));
+</script>
+</body>
+</html>

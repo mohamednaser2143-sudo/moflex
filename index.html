@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MoFlex</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800;900&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--night:#14122a;--dusk:#221c3d;--plum:#2f2652;--gold:#e8b54a;--ember:#c4452f;--paper:#f3eee4;--mist:#a49cb8;--line:rgba(232,181,74,.22)}
+  *{box-sizing:border-box;margin:0}
+  html,body{background:var(--night);color:var(--paper);font-family:Karla,system-ui,sans-serif;min-height:100%}
+  a{color:inherit;text-decoration:none}
+  button{font:inherit}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:6px}
+  header{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:clamp(16px,4vw,48px);padding:calc(14px + env(safe-area-inset-top)) clamp(16px,4vw,56px) 14px;background:linear-gradient(var(--night),rgba(20,18,42,.86));backdrop-filter:blur(8px)}
+  .logo{font-family:Cinzel,serif;font-weight:900;font-size:clamp(24px,3vw,34px);letter-spacing:.04em;color:var(--gold)}
+  .logo span{color:var(--paper)}
+  nav{display:flex;gap:6px}
+  nav a{padding:8px 14px;border-radius:999px;color:var(--mist);font-weight:600}
+  nav a[aria-current="page"]{background:var(--plum);color:var(--paper)}
+  nav a:hover{color:var(--paper)}
+  main{padding-bottom:80px}
+  .hero{position:relative;min-height:min(78vh,720px);display:flex;align-items:flex-end;overflow:hidden;background:radial-gradient(ellipse at 70% 100%,#5a2e2a 0%,#2a1d3f 45%,var(--night) 80%)}
+  .hero .skyline{position:absolute;left:0;right:0;bottom:0;width:100%;height:auto}
+  .hero .copy{position:relative;padding:0 clamp(16px,4vw,56px) clamp(28px,7vh,72px);max-width:760px}
+  .hero h1{font-family:Cinzel,serif;font-weight:900;font-size:clamp(40px,8vw,104px);line-height:.95;letter-spacing:.01em;text-shadow:0 6px 40px rgba(0,0,0,.6)}
+  .hero h1 .row{display:block;opacity:0;transform:translateY(18px);animation:rise .9s cubic-bezier(.2,.7,.2,1) forwards}
+  .hero h1 .row:nth-child(2){animation-delay:.18s}.hero h1 .row:nth-child(3){animation-delay:.36s}
+  @keyframes rise{to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.hero h1 .row{animation:none;opacity:1;transform:none}}
+  .hero p{margin-top:18px;font-size:clamp(16px,1.6vw,19px);line-height:1.55;max-width:56ch;color:#e4dccb}
+  .actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:999px;border:1px solid var(--gold);font-weight:700;cursor:pointer;background:transparent;color:var(--paper)}
+  .btn.primary{background:var(--gold);color:#1a1408}
+  section.block{padding:40px clamp(16px,4vw,56px) 0}
+  h2{font-family:Cinzel,serif;font-weight:800;font-size:clamp(22px,2.6vw,30px);margin-bottom:6px}
+  .count{color:var(--mist);margin-bottom:18px}
+  .row-scroll{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(260px,320px);gap:18px;overflow-x:auto;padding-bottom:12px;scroll-snap-type:x mandatory}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:22px}
+  .card{scroll-snap-align:start;display:block;background:var(--dusk);border-radius:14px;overflow:hidden;border:1px solid transparent;transition:border-color .2s,transform .2s}
+  .card:hover,.card:focus-visible{border-color:var(--gold);transform:translateY(-3px)}
+  .card .art{aspect-ratio:16/9;position:relative}
+  .card .art svg{width:100%;height:100%;display:block}
+  .card .art .tag{position:absolute;left:10px;top:10px;background:rgba(20,18,42,.8);color:var(--gold);font-weight:700;font-size:13px;padding:4px 10px;border-radius:999px}
+  .card .art .play{position:absolute;right:10px;bottom:10px;width:40px;height:40px;border-radius:50%;background:var(--gold);color:#1a1408;display:grid;place-items:center;font-size:16px}
+  .card .info{padding:14px 16px 18px}
+  .card h3{font-family:Cinzel,serif;font-weight:800;font-size:18px;line-height:1.2}
+  .card .meta{color:var(--mist);font-size:14px;margin-top:4px}
+  .card .blurb{color:#d9d1c2;font-size:15px;line-height:1.5;margin-top:8px}
+  .show-card{display:grid;grid-template-columns:minmax(220px,420px) 1fr;gap:0;max-width:980px}
+  .show-card .art{aspect-ratio:auto;min-height:220px}
+  .show-card .info{padding:22px 24px;display:flex;flex-direction:column;justify-content:center}
+  .show-card h3{font-size:clamp(22px,2.6vw,30px)}
+  @media (max-width:640px){.show-card{grid-template-columns:1fr}}
+  .empty{border:1px dashed var(--line);border-radius:14px;padding:36px 24px;color:var(--mist);max-width:620px;line-height:1.6}
+  .empty strong{display:block;color:var(--paper);font-size:18px;margin-bottom:4px}
+  .ep-list{display:flex;flex-direction:column;gap:14px;max-width:980px}
+  .ep{display:grid;grid-template-columns:200px 1fr;gap:18px;align-items:center;background:var(--dusk);border-radius:14px;padding:12px;border:1px solid transparent}
+  .ep:hover,.ep:focus-visible{border-color:var(--gold)}
+  .ep .art{aspect-ratio:16/9;border-radius:10px;overflow:hidden}
+  .ep .art svg{width:100%;height:100%;display:block}
+  .ep h3{font-family:Cinzel,serif;font-weight:800;font-size:19px}
+  .ep .meta{color:var(--mist);font-size:14px;margin:4px 0 6px}
+  .ep p{color:#d9d1c2;line-height:1.5;font-size:15px}
+  @media (max-width:560px){.ep{grid-template-columns:1fr}}
+  .page-head{padding:34px clamp(16px,4vw,56px) 0}
+  .back{color:var(--mist);font-weight:600;display:inline-block;margin-bottom:14px}
+  .show-hero{display:grid;grid-template-columns:1fr minmax(240px,460px);gap:28px;align-items:center;padding:28px clamp(16px,4vw,56px) 10px}
+  .show-hero .art{border-radius:16px;overflow:hidden;aspect-ratio:16/9}
+  .show-hero .art svg{width:100%;height:100%;display:block}
+  .show-hero h1{font-family:Cinzel,serif;font-weight:900;font-size:clamp(32px,5vw,64px);line-height:1}
+  .show-hero p{color:#e4dccb;line-height:1.6;margin-top:14px;max-width:56ch}
+  @media (max-width:760px){.show-hero{grid-template-columns:1fr}}
+  footer{padding:60px clamp(16px,4vw,56px) 30px;color:var(--mist);font-size:14px}
+</style>
+</head>
+<body>
+<header>
+  <a class="logo" href="#/">Mo<span>Flex</span></a>
+  <nav aria-label="Main">
+    <a href="#/" data-tab="home">Home</a>
+    <a href="#/shows" data-tab="shows">Shows</a>
+    <a href="#/trailers" data-tab="trailers">Trailers</a>
+  </nav>
+</header>
+<main id="app"></main>
+<footer>MoFlex · Free to watch</footer>
+<script src="catalog.js"></script>
+<script>
+  const C = window.MOFLEX_CATALOG, ART = window.MOFLEX_ART;
+  const show = C.shows[0];
+  let avail = { episodes: [], trailers: [] };
+  const app = document.getElementById('app');
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const showArt = () => ART('castle', ['#e8a06a', '#2a1d3f']);
+  const skyline = `<svg class="skyline" viewBox="0 0 1600 300" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><g fill="#0d0b1c">
+    <path d="M0 300 V230 Q60 205 120 228 T260 222 V300Z"/><path d="M95 228 q12 -40 24 -4 q10 -24 16 6z" fill="#ff8a3a" opacity=".9"/>
+    <path d="M260 300 V250 L330 170 L400 250 L440 205 L480 250 V300Z"/>
+    <path d="M500 300 V250 h150 v-22 h-22 v-22 h-22 v-22 h-22 v-18 h-20 v18 h-22 v22 h-22 v22 h-20 z"/>
+    <path d="M690 300 V214 h230 V300 h-14 V250 a24 24 0 0 0 -48 0 V300 h-14 V250 a24 24 0 0 0 -48 0 V300 h-14 V250 a24 24 0 0 0 -48 0 V300 h-14 V250 a24 24 0 0 0 -30 0 V300z"/>
+    <path d="M940 300 V230 h40 V170 h26 v60 h40 v-90 h34 v90 h40 v-60 h26 v60 h40 V300z"/><path d="M976 172 l17 -22 l17 22z M1084 142 l20 -26 l20 26z M1186 172 l17 -22 l17 22z" fill="#8b263e"/>
+    ${[[1270, 120], [1305, 80], [1345, 140], [1380, 50], [1425, 100], [1462, 30], [1505, 110], [1545, 70]].map(([x, h]) => `<rect x="${x}" y="${h + 60}" width="30" height="${240 - h}"/>`).join('')}
+  </g></svg>`;
+  function epCard(ep) { return `<a class="card" href="watch.html?type=episode&n=${ep.n}"><div class="art">${ART(ep.art, ep.sky)}<span class="tag">Episode ${ep.n}</span><span class="play" aria-hidden="true">▶</span></div><div class="info"><h3>${esc(ep.title)}</h3><div class="meta">${ep.mins} min</div><p class="blurb">${esc(ep.blurb)}</p></div></a>`; }
+  function trCard(ep) { return `<a class="card" href="watch.html?type=trailer&n=${ep.n}"><div class="art">${ART(ep.art, ep.sky)}<span class="tag">Trailer · Episode ${ep.n}</span><span class="play" aria-hidden="true">▶</span></div><div class="info"><h3>${esc(ep.title)}</h3><div class="meta">Under 1 min</div></div></a>`; }
+  function epRow(ep, type) { const href = `watch.html?type=${type}&n=${ep.n}`; return `<a class="ep" href="${href}"><div class="art">${ART(ep.art, ep.sky)}</div><div><h3>${type === 'trailer' ? 'Trailer: ' : ''}Episode ${ep.n}: ${esc(ep.title)}</h3><div class="meta">${type === 'trailer' ? 'Under 1 min' : ep.mins + ' min'}</div><p>${esc(ep.blurb)}</p></div></a>`; }
+  const availEps = () => show.episodes.filter(e => avail.episodes.includes(e.n));
+  const availTrs = () => show.episodes.filter(e => avail.trailers.includes(e.n));
+  const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'} available`;
+  function showCard(target) { return `<a class="card show-card" href="#/${target}/${show.id}"><div class="art">${showArt()}</div><div class="info"><h3>${esc(show.title)}</h3><div class="meta">${target === 'trailers' ? plural(availTrs().length, 'trailer') : plural(availEps().length, 'episode')}</div><p class="blurb">${esc(show.tagline)}</p></div></a>`; }
+  const views = {
+    home() {
+      const eps = availEps(), trs = availTrs();
+      return `<section class="hero">${skyline}<div class="copy"><h1><span class="row">Tales</span><span class="row">Of The</span><span class="row">Legend</span></h1><p>${esc(show.tagline)}</p><div class="actions"><a class="btn primary" href="#/shows/${show.id}">▶ Watch now</a><a class="btn" href="#/trailers/${show.id}">See trailers</a></div></div></section>
+      <section class="block"><h2>Episodes</h2><div class="count">${plural(eps.length, 'episode')}</div>${eps.length ? `<div class="row-scroll">${eps.map(epCard).join('')}</div>` : emptyEps()}</section>
+      <section class="block"><h2>Trailers</h2><div class="count">${plural(trs.length, 'trailer')}</div>${trs.length ? `<div class="row-scroll">${trs.map(trCard).join('')}</div>` : emptyTrs()}</section>`;
+    },
+    shows() { return `<div class="page-head"><h2>Shows</h2><div class="count">Pick a show to see its episodes.</div><div class="grid" style="grid-template-columns:1fr">${showCard('shows')}</div></div>`; },
+    trailers() { return `<div class="page-head"><h2>Trailers</h2><div class="count">Pick a show to see its trailers.</div><div class="grid" style="grid-template-columns:1fr">${showCard('trailers')}</div></div>`; },
+    showPage(type) {
+      const list = type === 'trailers' ? availTrs() : availEps();
+      return `<div class="page-head"><a class="back" href="#/${type}">← All ${type}</a></div>
+      <div class="show-hero"><div><h1>${esc(show.title)}</h1><p>${esc(show.tagline)}</p></div><div class="art">${showArt()}</div></div>
+      <section class="block"><h2>${type === 'trailers' ? 'Trailers' : 'Episodes'}</h2><div class="count">${type === 'trailers' ? plural(list.length, 'trailer') : plural(list.length, 'episode')}</div>
+      ${list.length ? `<div class="ep-list">${list.map(e => epRow(e, type === 'trailers' ? 'trailer' : 'episode')).join('')}</div>` : (type === 'trailers' ? emptyTrs() : emptyEps())}</section>`;
+    }
+  };
+  const emptyEps = () => `<div class="empty"><strong>No episodes yet</strong>New episodes of Tales Of The Legend show up here as soon as they're released. Watch the trailers while you wait.</div>`;
+  const emptyTrs = () => `<div class="empty"><strong>No trailers yet</strong>Trailers for Tales Of The Legend show up here as soon as they're released.</div>`;
+  function route() {
+    const h = location.hash.replace(/^#\/?/, '').split('/');
+    let tab = 'home', html;
+    if (h[0] === 'shows' && h[1]) { tab = 'shows'; html = views.showPage('shows'); }
+    else if (h[0] === 'trailers' && h[1]) { tab = 'trailers'; html = views.showPage('trailers'); }
+    else if (h[0] === 'shows') { tab = 'shows'; html = views.shows(); }
+    else if (h[0] === 'trailers') { tab = 'trailers'; html = views.trailers(); }
+    else html = views.home();
+    app.innerHTML = html;
+    document.querySelectorAll('nav a').forEach(a => { if (a.dataset.tab === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    window.scrollTo(0, 0);
+  }
+  window.addEventListener('hashchange', route);
+  fetch('availability.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.json() : avail).then(j => { avail = { episodes: (j.episodes || []).map(Number), trailers: (j.trailers || []).map(Number) }; }).catch(() => { }).finally(route);
+  route();
+</script>
+</body>
+</html>
