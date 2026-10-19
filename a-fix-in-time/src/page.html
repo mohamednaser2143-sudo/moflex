@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{TITLE}}</title>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #050811; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #fff; user-select: none; }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; }
+        #fade-overlay { position: fixed; inset: 0; background: #000; opacity: 1; transition: opacity 0.6s ease; pointer-events: none; z-index: 5; }
+        #flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 6; mix-blend-mode: screen; }
+        #gem-hud { position: fixed; top: 14px; right: 16px; z-index: 12; width: 54px; height: 54px; border-radius: 50%; background: radial-gradient(circle, #4fc3ff 0 38%, #b8902f 40% 52%, rgba(20,16,10,.75) 54%); box-shadow: 0 0 14px rgba(79,195,255,.5); pointer-events: none; }
+        #gem-hud i { position: absolute; width: 9px; height: 9px; margin: -4.5px; border-radius: 2px; transform: rotate(45deg); border: 1px solid rgba(255,255,255,.5); transition: background .6s, box-shadow .6s; }
+        #gem-hud.pop { animation: gempop 1.2s ease; }
+        @keyframes gempop { 0% { transform: scale(1); } 30% { transform: scale(1.6); } 100% { transform: scale(1); } }
+        #story-ui { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; box-sizing: border-box; padding: 10px 22px 13px; background: linear-gradient(to bottom, rgba(5,8,17,0.02) 0%, rgba(5,8,17,0.34) 18%, rgba(5,8,17,0.78) 58%, rgba(5,8,17,0.93) 100%); backdrop-filter: blur(4px); border-top: 1px solid rgba(255,255,255,0.10); box-shadow: 0 -8px 25px rgba(0,0,0,0.22); display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "progress progress" "info controls"; align-items: end; column-gap: 18px; row-gap: 5px; z-index: 10; pointer-events: none; }
+        .scene-info { grid-area: info; min-width: 0; padding: 0 0 2px; text-shadow: 0 2px 8px rgba(0,0,0,0.9); }
+        #progress-bar-container { grid-area: progress; width: 100%; height: 6px; background: rgba(255,255,255,0.15); border-radius: 3px; overflow: hidden; }
+        #progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #4fc3ff, #e8b54a); transition: width 0.1s linear; }
+        #scene-title { margin: 0; font-size: 21px; color: #e8b54a; letter-spacing: 1px; text-shadow: 0 0 12px rgba(232,181,74,0.5); }
+        #scene-description { margin: 2px 0 0; font-size: 14px; line-height: 1.42; color: rgba(245,245,245,0.92); max-width: 1100px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+        .controls-row { grid-area: controls; display: flex; justify-content: flex-end; align-items: center; gap: 12px; pointer-events: auto; }
+        .btn-group { display: flex; gap: 8px; }
+        button { padding: 9px 16px; font-size: 14px; font-weight: bold; color: white; background: rgba(255,255,255,0.1); border: 2px solid #4fc3ff; border-radius: 6px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
+        button:hover { background: #4fc3ff; color: #000; box-shadow: 0 0 12px #4fc3ff; }
+        #scene-counter { font-family: monospace; font-size: 13px; color: #aaa; }
+        @media (max-width: 700px) {
+            #story-ui { grid-template-columns: 1fr; grid-template-areas: "progress" "info" "controls"; row-gap: 4px; }
+            .controls-row { justify-content: space-between; }
+            .btn-group { flex-wrap: wrap; }
+            button { padding: 7px 10px; font-size: 12px; }
+            #scene-description { -webkit-line-clamp: 2; }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="fade-overlay"></div>
+    <div id="flash"></div>
+    <div id="gem-hud"></div>
+    <div id="story-ui">
+        <div id="progress-bar-container"><div id="progress-bar"></div></div>
+        <div class="scene-info">
+            <h2 id="scene-title">Winding the watch...</h2>
+            <p id="scene-description">Getting ready...</p>
+        </div>
+        <div class="controls-row">
+            <span id="scene-counter">SCENE 1</span>
+            <div class="btn-group">
+                <button onclick="prevScene()">◄ Prev</button>
+                <button id="autoplay-btn" onclick="toggleAutoPlay()">Autoplay: ON</button>
+                <button id="narrator-btn" onclick="toggleNarrator()">Narrator: ON</button>
+                <button onclick="nextScene()">Next ►</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Seven little gem slots around the corner watch.
+        (function () { const h = document.getElementById('gem-hud'); for (let i = 0; i < 7; i++) { const a = -Math.PI / 2 + (i + 0.5) * Math.PI * 2 / 7; const d = document.createElement('i'); d.style.left = (27 + Math.cos(a) * 21) + 'px'; d.style.top = (27 + Math.sin(a) * 21) + 'px'; h.appendChild(d); } })();
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>window.SHOW_INFO = {{SHOW_INFO}};</script>
+    <script>
+{{ENGINE}}
+{{STORY}}
+    </script>
+    <script>
+{{RUNNER}}
+    </script>
+</body>
+</html>

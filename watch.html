@@ -18,15 +18,19 @@
 <div id="msg"><div id="msgText"></div><a href="index.html">Go to MoFlex</a></div>
 <script>
   const p = new URLSearchParams(location.search); const type = p.get('type') === 'trailer' ? 'trailer' : 'episode'; const n = parseInt(p.get('n'), 10);
+  // Old links have no show, so they mean the first show (Tales Of The Legend).
+  const SHOWS = { 'tales-of-the-legend': '', 'a-fix-in-time': 'a-fix-in-time/' };
+  const show = Object.prototype.hasOwnProperty.call(SHOWS, p.get('show')) ? p.get('show') : 'tales-of-the-legend';
   const back = document.getElementById('back');
-  const goBack = () => { location.href = 'index.html#/' + (type === 'trailer' ? 'trailers' : 'shows') + '/tales-of-the-legend'; };
+  const goBack = () => { location.href = 'index.html#/' + (type === 'trailer' ? 'trailers' : 'shows') + '/' + show; };
   back.onclick = goBack; window.addEventListener('message', e => { if (e.data === 'moflex-back') goBack(); });
   let hideT; const poke = () => { back.classList.remove('hide'); clearTimeout(hideT); hideT = setTimeout(() => back.classList.add('hide'), 2500); }; ['mousemove', 'touchstart', 'keydown'].forEach(ev => window.addEventListener(ev, poke)); poke();
   function blocked(text) { document.getElementById('msgText').textContent = text; document.getElementById('msg').style.display = 'flex'; }
   fetch('availability.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.json()).then(a => {
-    const list = (type === 'trailer' ? a.trailers : a.episodes || []).map(Number);
+    const src = show === 'tales-of-the-legend' ? a : ((a.shows || {})[show] || {});
+    const list = ((type === 'trailer' ? src.trailers : src.episodes) || []).map(Number);
     if (!n || !list.includes(n)) return blocked(type === 'trailer' ? 'This trailer is not released yet.' : 'This episode is not released yet.');
-    const f = document.createElement('iframe'); f.src = (type === 'trailer' ? 'trailers/trailer-' : 'episodes/episode-') + n + '.html'; f.allow = 'autoplay; fullscreen'; f.allowFullscreen = true; f.title = 'Player'; document.body.prepend(f);
+    const f = document.createElement('iframe'); f.src = SHOWS[show] + (type === 'trailer' ? 'trailers/trailer-' : 'episodes/episode-') + n + '.html'; f.allow = 'autoplay; fullscreen'; f.allowFullscreen = true; f.title = 'Player'; document.body.prepend(f);
     f.addEventListener('load', () => { try { f.contentWindow.document.addEventListener('mousemove', poke); } catch (e) { } });
   }).catch(() => blocked('Could not load this video. Check your connection and try again.'));
 </script>
