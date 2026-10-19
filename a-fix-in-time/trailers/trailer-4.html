@@ -326,9 +326,9 @@ function createWatch({ dark = false, size = 1 } = {}) {
         tt += 1 / 60;
         h1.rotation.z = -tt * 0.9 * power; h2.rotation.z = -tt * 0.08 * power;
         pulse = Math.max(0, pulse - 0.012);
-        const s = (1.4 + Math.sin(tt * 3) * 0.15) * (0.4 + power * 0.6) + pulse * 5;
+        const pw = Math.min(Math.abs(power), 12); const s = (1.4 + Math.sin(tt * 3) * 0.15) * (0.4 + pw * 0.6) + pulse * 5;
         glow.scale.set(s, s, 1);
-        glow.material.opacity = 0.35 + 0.25 * power + pulse * 0.4;
+        glow.material.opacity = Math.min(1, 0.35 + 0.25 * pw + pulse * 0.4);
     });
     w.scale.setScalar(size);
     w.face = face; w.gems = gems;
@@ -649,6 +649,54 @@ function createCart(x, z, loaded = true) {
     g.add(box(3.5, 0.15, 0.15, 0x5a3a22, 3.6, 1.3, 0.5), box(3.5, 0.15, 0.15, 0x5a3a22, 3.6, 1.3, -0.5));
     if (loaded) for (let i = 0; i < 5; i++) g.add(at(createSack(0, 0, 0.7), -1.4 + (i % 3) * 1.3, 1.5 + Math.floor(i / 3) * 0.9, (i % 2) * 0.6 - 0.3));
     g.position.set(x, 0, z); return g;
+}
+function createLivingRoom() {
+    const g = createRoom({ w: 34, d: 22, h: 13, wall: 0x9c7b5c, floor: 0x6e4c33, trim: 0x4a3020 });
+    g.add(box(10, 0.05, 7, 0x8a2f2f, 2, 0.08, 1));                                   // rug
+    g.add(box(9, 1.6, 3, 0x4f6b8a, -8, 1.3, -7), box(9, 2.6, 0.8, 0x4f6b8a, -8, 2.2, -8.4), box(0.8, 2.2, 3, 0x4f6b8a, -12.4, 1.9, -7), box(0.8, 2.2, 3, 0x4f6b8a, -3.6, 1.9, -7)); // sofa
+    g.add(box(3.6, 1.6, 3.4, 0x7a4a2a, 8, 1.2, -5), box(3.6, 3.4, 0.7, 0x7a4a2a, 8, 2.6, -6.6)); // armchair
+    // window with rain light
+    g.add(box(6, 5, 0.3, 0x3a2a1a, 0, 7, -10.8), box(5.4, 4.4, 0.2, glowMat(0x7f97b3), 0, 7, -10.6), box(0.2, 4.4, 0.25, 0x3a2a1a, 0, 7, -10.5), box(5.4, 0.2, 0.25, 0x3a2a1a, 0, 7, -10.5));
+    // bookshelf
+    g.add(box(6, 9, 1.6, 0x5a3a22, -14, 4.5, -9.8));
+    const r = makeRand(4); for (let s = 0; s < 4; s++) for (let i = 0; i < 9; i++) g.add(box(0.5, 1.4 + r() * 0.5, 1.1, [0x8a2f2f, 0x2f5a8a, 0x3a7a4a, 0xc9a240, 0x5a3a6a][(i + s) % 5], -16.4 + i * 0.6, 1.2 + s * 2.1, -9.6));
+    // old photo of the family clock shop
+    const photo = createSign('YUSUF CLOCKS\n1899', 4.4, 3, { w: 512, h: 350, bg: '#cdb58a', fg: '#4a3520', border: '#3a2a1a', font: '700 64px Georgia' });
+    photo.position.set(9, 8, -10.6); g.add(photo);
+    // grandfather clock
+    g.add(box(2.2, 8, 1.4, 0x4a2a14, 14, 4, -9.6), cyl(0.8, 0.8, 0.2, glowMat(0xf2e8cc), 14, 6.8, -8.85, 20));
+    g.children[g.children.length - 1].rotation.x = Math.PI / 2;
+    g.add(createLantern(-8, 9.5, -10.4, 0xffd59a, 0.9));
+    return g;
+}
+function createAttic() {
+    const g = group(box(36, 0.3, 24, 0x6a4b30, 0, -0.1, 0));
+    const wood = mat(0x5a3d26), beam = mat(0x3f2a18);
+    // sloped roof halves
+    const roofL = box(20, 0.4, 26, wood, -9, 9, -1); roofL.rotation.z = 0.62; roofL.castShadow = false; g.add(roofL);
+    const roofR = box(20, 0.4, 26, wood, 9, 9, -1); roofR.rotation.z = -0.62; roofR.castShadow = false; g.add(roofR);
+    g.add(box(36, 15, 0.4, 0x5f4229, 0, 7.5, -12));
+    for (let i = -2; i <= 2; i++) { const b = box(0.6, 0.6, 24, beam, i * 6, 12.4 - Math.abs(i) * 3.6, -1); g.add(b); }
+    g.add(box(0.6, 0.6, 24, beam, 0, 15.5, -1));
+    // round window
+    const w = cyl(2.2, 2.2, 0.3, mat(0x3f2a18), 0, 9, -11.7, 24); w.rotation.x = Math.PI / 2; g.add(w);
+    const wg = cyl(1.9, 1.9, 0.32, glowMat(0x9fb6d0), 0, 9, -11.6, 24); wg.rotation.x = Math.PI / 2; g.add(wg);
+    g.add(box(0.15, 3.8, 0.35, 0x3f2a18, 0, 9, -11.45), box(3.8, 0.15, 0.35, 0x3f2a18, 0, 9, -11.45));
+    // boxes, a covered mirror, an old bicycle wheel, a rocking horse
+    [[-10, -7, 1.2], [-12, -4, 1], [-9.5, -4.4, 0.8], [11, -8, 1.3], [12.5, -5, 0.9], [9, -6, 0.7]].forEach(([x, z, s]) => g.add(createCrate(x, z, s, 0xa98a62)));
+    g.add(box(3, 5, 0.3, 0xe8e1d0, 13, 2.5, -2), box(3.2, 0.3, 0.4, 0x5a3d26, 13, 0.15, -2));
+    const wh = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.08, 6, 20), mat(0x333333)); wh.position.set(-13, 1.6, 0); wh.rotation.y = 0.6; g.add(wh);
+    // ladder hatch
+    g.add(box(4, 0.35, 3, 0x2a1a0c, -4, 0.06, 8));
+    return g;
+}
+function createTrunk() {
+    const g = group(box(4.4, 2.2, 2.6, 0x6b3f1f, 0, 1.1, 0), box(4.5, 0.25, 2.7, 0xb08a3a, 0, 0.3, 0, { metalness: 0.6 }), box(4.5, 0.25, 2.7, 0xb08a3a, 0, 1.95, 0, { metalness: 0.6 }));
+    const lid = group(box(4.4, 0.6, 2.6, 0x7a4a26, 0, 0.3, 1.3), box(4.5, 0.15, 2.7, 0xb08a3a, 0, 0.35, 1.3, { metalness: 0.6 }));
+    lid.position.set(0, 2.2, -1.3); g.add(lid);
+    g.add(box(0.5, 0.6, 0.1, 0xd4af37, 0, 1.8, 1.32, { metalness: 0.8 }));
+    const glow = createGlow(0x6fd3ff, 0.1, 0.9); glow.position.set(0, 2.4, 0); g.add(glow);
+    g.lid = lid; g.glow = glow; return g;
 }
 // Interior room: floor plus back and side walls, open at the front for the camera.
 function createRoom({ w = 30, d = 22, h = 12, wall = 0x8a6a4a, floor = 0x6a4a32, trim = 0x4a3020, left = true, right = true, back = true } = {}) {
