@@ -89,11 +89,19 @@
 <script src="catalog.js"></script>
 <script>
   const C = window.MOFLEX_CATALOG, ART = window.MOFLEX_ART;
-  const show = C.shows[0];
-  let avail = { episodes: [], trailers: [] };
+  const SHOWS = C.shows, FIRST = SHOWS[0];
+  const findShow = id => SHOWS.find(s => s.id === id);
+  // availability.json: the top-level lists belong to the first show; other shows live under "shows".
+  let avail = {};
+  function readAvail(j) {
+    const out = {}; const nums = a => (a || []).map(Number);
+    SHOWS.forEach((s, i) => { const src = i === 0 ? j : ((j.shows || {})[s.id] || {}); out[s.id] = { episodes: nums(src.episodes), trailers: nums(src.trailers) }; });
+    return out;
+  }
+  avail = readAvail({});
   const app = document.getElementById('app');
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const showArt = () => ART('castle', ['#e8a06a', '#2a1d3f']);
+  const showArt = s => ART(s.art || 'castle', s.sky || ['#e8a06a', '#2a1d3f']);
   const skyline = `<svg class="skyline" viewBox="0 0 1600 300" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><g fill="#0d0b1c">
     <path d="M0 300 V230 Q60 205 120 228 T260 222 V300Z"/><path d="M95 228 q12 -40 24 -4 q10 -24 16 6z" fill="#ff8a3a" opacity=".9"/>
     <path d="M260 300 V250 L330 170 L400 250 L440 205 L480 250 V300Z"/>
@@ -102,37 +110,42 @@
     <path d="M940 300 V230 h40 V170 h26 v60 h40 v-90 h34 v90 h40 v-60 h26 v60 h40 V300z"/><path d="M976 172 l17 -22 l17 22z M1084 142 l20 -26 l20 26z M1186 172 l17 -22 l17 22z" fill="#8b263e"/>
     ${[[1270, 120], [1305, 80], [1345, 140], [1380, 50], [1425, 100], [1462, 30], [1505, 110], [1545, 70]].map(([x, h]) => `<rect x="${x}" y="${h + 60}" width="30" height="${240 - h}"/>`).join('')}
   </g></svg>`;
-  function epCard(ep) { return `<a class="card" href="watch.html?type=episode&n=${ep.n}"><div class="art">${ART(ep.art, ep.sky)}<span class="tag">Episode ${ep.n}</span><span class="play" aria-hidden="true">▶</span></div><div class="info"><h3>${esc(ep.title)}</h3><div class="meta">${ep.mins} min</div><p class="blurb">${esc(ep.blurb)}</p></div></a>`; }
-  function trCard(ep) { return `<a class="card" href="watch.html?type=trailer&n=${ep.n}"><div class="art">${ART(ep.art, ep.sky)}<span class="tag">Trailer · Episode ${ep.n}</span><span class="play" aria-hidden="true">▶</span></div><div class="info"><h3>${esc(ep.title)}</h3><div class="meta">Under 1 min</div></div></a>`; }
-  function epRow(ep, type) { const href = `watch.html?type=${type}&n=${ep.n}`; return `<a class="ep" href="${href}"><div class="art">${ART(ep.art, ep.sky)}</div><div><h3>${type === 'trailer' ? 'Trailer: ' : ''}Episode ${ep.n}: ${esc(ep.title)}</h3><div class="meta">${type === 'trailer' ? 'Under 1 min' : ep.mins + ' min'}</div><p>${esc(ep.blurb)}</p></div></a>`; }
-  const availEps = () => show.episodes.filter(e => avail.episodes.includes(e.n));
-  const availTrs = () => show.episodes.filter(e => avail.trailers.includes(e.n));
+  const watchUrl = (s, type, n) => `watch.html?show=${encodeURIComponent(s.id)}&type=${type}&n=${n}`;
+  function epCard(s, ep) { return `<a class="card" href="${watchUrl(s, 'episode', ep.n)}"><div class="art">${ART(ep.art, ep.sky)}<span class="tag">Episode ${ep.n}</span><span class="play" aria-hidden="true">▶</span></div><div class="info"><h3>${esc(ep.title)}</h3><div class="meta">${esc(s.title)} · ${ep.mins} min</div><p class="blurb">${esc(ep.blurb)}</p></div></a>`; }
+  function trCard(s, ep) { return `<a class="card" href="${watchUrl(s, 'trailer', ep.n)}"><div class="art">${ART(ep.art, ep.sky)}<span class="tag">Trailer · Episode ${ep.n}</span><span class="play" aria-hidden="true">▶</span></div><div class="info"><h3>${esc(ep.title)}</h3><div class="meta">${esc(s.title)} · Under 1 min</div></div></a>`; }
+  function epRow(s, ep, type) { return `<a class="ep" href="${watchUrl(s, type, ep.n)}"><div class="art">${ART(ep.art, ep.sky)}</div><div><h3>${type === 'trailer' ? 'Trailer: ' : ''}Episode ${ep.n}: ${esc(ep.title)}</h3><div class="meta">${type === 'trailer' ? 'Under 1 min' : ep.mins + ' min'}</div><p>${esc(ep.blurb)}</p></div></a>`; }
+  const availEps = s => s.episodes.filter(e => avail[s.id].episodes.includes(e.n));
+  const availTrs = s => s.episodes.filter(e => avail[s.id].trailers.includes(e.n));
   const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'} available`;
-  function showCard(target) { return `<a class="card show-card" href="#/${target}/${show.id}"><div class="art">${showArt()}</div><div class="info"><h3>${esc(show.title)}</h3><div class="meta">${target === 'trailers' ? plural(availTrs().length, 'trailer') : plural(availEps().length, 'episode')}</div><p class="blurb">${esc(show.tagline)}</p></div></a>`; }
+  function showCard(s, target) { return `<a class="card show-card" href="#/${target}/${s.id}"><div class="art">${showArt(s)}</div><div class="info"><h3>${esc(s.title)}</h3><div class="meta">${target === 'trailers' ? plural(availTrs(s).length, 'trailer') : plural(availEps(s).length, 'episode')}</div><p class="blurb">${esc(s.tagline)}</p></div></a>`; }
+  const emptyEps = s => `<div class="empty"><strong>No episodes yet</strong>New episodes of ${esc(s.title)} show up here as soon as they're released. Watch the trailers while you wait.</div>`;
+  const emptyTrs = s => `<div class="empty"><strong>No trailers yet</strong>Trailers for ${esc(s.title)} show up here as soon as they're released.</div>`;
   const views = {
     home() {
-      const eps = availEps(), trs = availTrs();
-      return `<section class="hero">${skyline}<div class="copy"><h1><span class="row">Tales</span><span class="row">Of The</span><span class="row">Legend</span></h1><p>${esc(show.tagline)}</p><div class="actions"><a class="btn primary" href="#/shows/${show.id}">▶ Watch now</a><a class="btn" href="#/trailers/${show.id}">See trailers</a></div></div></section>
-      <section class="block"><h2>Episodes</h2><div class="count">${plural(eps.length, 'episode')}</div>${eps.length ? `<div class="row-scroll">${eps.map(epCard).join('')}</div>` : emptyEps()}</section>
-      <section class="block"><h2>Trailers</h2><div class="count">${plural(trs.length, 'trailer')}</div>${trs.length ? `<div class="row-scroll">${trs.map(trCard).join('')}</div>` : emptyTrs()}</section>`;
+      const s = FIRST;
+      let html = `<section class="hero">${skyline}<div class="copy"><h1><span class="row">Tales</span><span class="row">Of The</span><span class="row">Legend</span></h1><p>${esc(s.tagline)}</p><div class="actions"><a class="btn primary" href="#/shows/${s.id}">▶ Watch now</a><a class="btn" href="#/trailers/${s.id}">See trailers</a></div></div></section>`;
+      SHOWS.forEach(sh => {
+        const eps = availEps(sh), trs = availTrs(sh);
+        html += `<section class="block"><h2>${esc(sh.title)}: Episodes</h2><div class="count">${plural(eps.length, 'episode')}</div>${eps.length ? `<div class="row-scroll">${eps.map(e => epCard(sh, e)).join('')}</div>` : emptyEps(sh)}</section>
+        <section class="block"><h2>${esc(sh.title)}: Trailers</h2><div class="count">${plural(trs.length, 'trailer')}</div>${trs.length ? `<div class="row-scroll">${trs.map(e => trCard(sh, e)).join('')}</div>` : emptyTrs(sh)}</section>`;
+      });
+      return html;
     },
-    shows() { return `<div class="page-head"><h2>Shows</h2><div class="count">Pick a show to see its episodes.</div><div class="grid" style="grid-template-columns:1fr">${showCard('shows')}</div></div>`; },
-    trailers() { return `<div class="page-head"><h2>Trailers</h2><div class="count">Pick a show to see its trailers.</div><div class="grid" style="grid-template-columns:1fr">${showCard('trailers')}</div></div>`; },
-    showPage(type) {
-      const list = type === 'trailers' ? availTrs() : availEps();
+    shows() { return `<div class="page-head"><h2>Shows</h2><div class="count">Pick a show to see its episodes.</div><div class="grid" style="grid-template-columns:1fr">${SHOWS.map(s => showCard(s, 'shows')).join('')}</div></div>`; },
+    trailers() { return `<div class="page-head"><h2>Trailers</h2><div class="count">Pick a show to see its trailers.</div><div class="grid" style="grid-template-columns:1fr">${SHOWS.map(s => showCard(s, 'trailers')).join('')}</div></div>`; },
+    showPage(s, type) {
+      const list = type === 'trailers' ? availTrs(s) : availEps(s);
       return `<div class="page-head"><a class="back" href="#/${type}">← All ${type}</a></div>
-      <div class="show-hero"><div><h1>${esc(show.title)}</h1><p>${esc(show.tagline)}</p></div><div class="art">${showArt()}</div></div>
+      <div class="show-hero"><div><h1>${esc(s.title)}</h1><p>${esc(s.tagline)}</p></div><div class="art">${showArt(s)}</div></div>
       <section class="block"><h2>${type === 'trailers' ? 'Trailers' : 'Episodes'}</h2><div class="count">${type === 'trailers' ? plural(list.length, 'trailer') : plural(list.length, 'episode')}</div>
-      ${list.length ? `<div class="ep-list">${list.map(e => epRow(e, type === 'trailers' ? 'trailer' : 'episode')).join('')}</div>` : (type === 'trailers' ? emptyTrs() : emptyEps())}</section>`;
+      ${list.length ? `<div class="ep-list">${list.map(e => epRow(s, e, type === 'trailers' ? 'trailer' : 'episode')).join('')}</div>` : (type === 'trailers' ? emptyTrs(s) : emptyEps(s))}</section>`;
     }
   };
-  const emptyEps = () => `<div class="empty"><strong>No episodes yet</strong>New episodes of Tales Of The Legend show up here as soon as they're released. Watch the trailers while you wait.</div>`;
-  const emptyTrs = () => `<div class="empty"><strong>No trailers yet</strong>Trailers for Tales Of The Legend show up here as soon as they're released.</div>`;
   function route() {
     const h = location.hash.replace(/^#\/?/, '').split('/');
     let tab = 'home', html;
-    if (h[0] === 'shows' && h[1]) { tab = 'shows'; html = views.showPage('shows'); }
-    else if (h[0] === 'trailers' && h[1]) { tab = 'trailers'; html = views.showPage('trailers'); }
+    const s = h[1] && findShow(h[1]);
+    if ((h[0] === 'shows' || h[0] === 'trailers') && s) { tab = h[0]; html = views.showPage(s, h[0]); }
     else if (h[0] === 'shows') { tab = 'shows'; html = views.shows(); }
     else if (h[0] === 'trailers') { tab = 'trailers'; html = views.trailers(); }
     else html = views.home();
@@ -141,7 +154,7 @@
     window.scrollTo(0, 0);
   }
   window.addEventListener('hashchange', route);
-  fetch('availability.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.json() : avail).then(j => { avail = { episodes: (j.episodes || []).map(Number), trailers: (j.trailers || []).map(Number) }; }).catch(() => { }).finally(route);
+  fetch('availability.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.json() : {}).then(j => { avail = readAvail(j || {}); }).catch(() => { }).finally(route);
   route();
 </script>
 </body>

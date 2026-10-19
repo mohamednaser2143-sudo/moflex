@@ -635,6 +635,13 @@ function createTrunk() {
     const glow = createGlow(0x6fd3ff, 0.1, 0.9); glow.position.set(0, 2.4, 0); g.add(glow);
     g.lid = lid; g.glow = glow; return g;
 }
+function createGear(r = 1, teeth = 12, color = 0xc9a240, th = 0.3) {
+    const m = mat(color, { metalness: 0.8, roughness: 0.3 });
+    const g = group(); const d = cyl(r, r, th, m, 0, 0, 0, 24); d.rotation.x = Math.PI / 2; g.add(d);
+    for (let i = 0; i < teeth; i++) { const a = i * Math.PI * 2 / teeth; const t = box(r * 0.28, r * 0.28, th, m, Math.cos(a) * r * 1.08, Math.sin(a) * r * 1.08, 0); t.rotation.z = a; g.add(t); }
+    const hub = cyl(r * 0.25, r * 0.25, th + 0.1, 0x6a5020, 0, 0, 0, 10); hub.rotation.x = Math.PI / 2; g.add(hub);
+    return g;
+}
 // Interior room: floor plus back and side walls, open at the front for the camera.
 function createRoom({ w = 30, d = 22, h = 12, wall = 0x8a6a4a, floor = 0x6a4a32, trim = 0x4a3020, left = true, right = true, back = true } = {}) {
     const g = group(box(w, 0.3, d, floor, 0, -0.1, 0));

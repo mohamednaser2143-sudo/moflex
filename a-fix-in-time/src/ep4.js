@@ -4,13 +4,6 @@
 // ---------- Episode 4 props ----------
 const BRASS = () => mat(0xc9a240, { metalness: 0.8, roughness: 0.3 });
 const SAND4 = 0xe3c99a, ARCH4 = 0xd8b98a;
-function createGear(r = 1, teeth = 12, color = 0xc9a240, th = 0.3) {
-    const m = mat(color, { metalness: 0.8, roughness: 0.3 });
-    const g = group(); const d = cyl(r, r, th, m, 0, 0, 0, 24); d.rotation.x = Math.PI / 2; g.add(d);
-    for (let i = 0; i < teeth; i++) { const a = i * Math.PI * 2 / teeth; const t = box(r * 0.28, r * 0.28, th, m, Math.cos(a) * r * 1.08, Math.sin(a) * r * 1.08, 0); t.rotation.z = a; g.add(t); }
-    const hub = cyl(r * 0.25, r * 0.25, th + 0.1, 0x6a5020, 0, 0, 0, 10); hub.rotation.x = Math.PI / 2; g.add(hub);
-    return g;
-}
 // Al-Jazari's Elephant Clock: an elephant carrying a tower, with a bird, two dragons, a driver and a scribe.
 function createElephantClock() {
     const g = group(); const grey = mat(0x8a8a90, { roughness: 0.7 }), cloth = mat(0x9a1f2b), gold = BRASS(), white = mat(0xf2ead8);
